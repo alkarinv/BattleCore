@@ -1,0 +1,10 @@
+name: BattleCore
+
+main: com.alk.battleCore.BattleCore
+
+version: 1.0.1.5
+
+author: Alkarin
+softdepend: [Vault]
+description: "Libraries and common routines for Battle plugins"
+commands:
