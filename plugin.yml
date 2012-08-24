@@ -2,7 +2,7 @@ name: BattleCore
 
 main: com.alk.battleCore.BattleCore
 
-version: 1.0.1.5
+version: 1.2
 
 author: Alkarin
 softdepend: [Vault]

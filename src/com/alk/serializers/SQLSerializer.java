@@ -25,16 +25,35 @@ import org.apache.commons.pool.impl.GenericObjectPool;
  *
  */
 public abstract class SQLSerializer{
-	static public final String version = "1.1.3.2";
+	static public final String version = "1.3"; 
+	
 	static protected final boolean DEBUG = false;
 	static final boolean DEBUG_UPDATE = false;
+
+	/**
+	 * Valid SQL Types
+	 * @author alkarin
+	 *
+	 */
+	public static enum SQLType{
+		MYSQL("MySQL","com.mysql.jdbc.Driver"), SQLITE("SQLite","org.sqlite.JDBC");
+		String name, driver;
+		SQLType(String name, String driver){
+			this.name = name; 
+			this.driver = driver;
+		}
+		public String getName(){return name;}
+		public String getDriver(){return driver;}
+	};
+	
 
 	static public final int MAX_NAME_LENGTH = 16;
 
 	private DataSource ds ;
 
 	protected String DB = "minecraft";
-	protected String DRIVER ="com.mysql.jdbc.Driver";
+	protected SQLType TYPE = SQLType.MYSQL;
+
 	protected String URL = "localhost";
 	protected String PORT = "3306";
 	protected String USERNAME = "root";
@@ -53,7 +72,10 @@ public abstract class SQLSerializer{
 
 	public String getPassword() {return PASSWORD;}
 	public void setPassword(String password) {PASSWORD = password;}
-
+	public void setType(SQLType type) {
+		this.TYPE = type;
+	}
+	public SQLType getType(){return TYPE;}
 	public String getDB() {return DB;}
 	public void setDB(String dB) {
 		DB = dB;
@@ -64,7 +86,6 @@ public abstract class SQLSerializer{
 		public ResultSet rs;
 		public Connection con;
 	}
-
 
 	public Connection getConnection(){
 		return getConnection(true);
@@ -93,37 +114,49 @@ public abstract class SQLSerializer{
 		try {con.close();} catch (SQLException e) {e.printStackTrace();}
 	}
 
-
 	protected boolean init(){
 		Connection con = null;  /// Our database connection
 		try {
-			Class.forName(DRIVER);
-			if (DEBUG) System.out.println("Got Driver");
+			Class.forName(TYPE.getDriver());
+			if (DEBUG) System.out.println("Got Driver " + TYPE.getDriver());
 		} catch (ClassNotFoundException e1) {
-			System.err.println("Failed getting driver");
+			System.err.println("Failed getting driver " + TYPE.getDriver());
 			e1.printStackTrace();
 			return false;
 		}
+		String connectionString = null,datasourceString = null;
+		switch(TYPE){
+		case SQLITE:
+			datasourceString = connectionString = "jdbc:sqlite:"+URL+"/"+DB+".sqlite";
+			break;
+		case MYSQL:
+		default:
+			datasourceString = "jdbc:mysql://"+URL+":"+PORT+"/"+DB;
+			connectionString = "jdbc:mysql://"+URL+":" + PORT;
+			break;
+		}
+
 		try {
-			ds = setupDataSource("jdbc:mysql://"+URL+":"+PORT+"/"+DB,USERNAME,PASSWORD,10,20 );
+			ds = setupDataSource(datasourceString,USERNAME,PASSWORD,10,20 );
 			//            LOG.debug("Connection attempt to database succeeded.");
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
 
 		String strStmt = create_database;
-		try {
-			//			con = getConnection();
-			con = DriverManager.getConnection("jdbc:mysql://"+URL+":" + PORT, USERNAME,PASSWORD);
-			Statement st = con.createStatement();
-			st.executeUpdate(strStmt);
-			if (DEBUG) System.out.println("Creating db");
-		} catch (SQLException e) {
-			System.err.println("Failed creating db: "  + strStmt);
-			e.printStackTrace();
-			return false;
-		} finally{
-			closeConnection(con);			
+		if (TYPE == SQLType.MYSQL){
+			try {
+				con = DriverManager.getConnection(connectionString, USERNAME,PASSWORD);
+				Statement st = con.createStatement();
+				st.executeUpdate(strStmt);
+				if (DEBUG) System.out.println("Creating db");
+			} catch (SQLException e) {
+				System.err.println("Failed creating db: "  + strStmt);
+				e.printStackTrace();
+				return false;
+			} finally{
+				closeConnection(con);			
+			}			
 		}
 		return true;
 	}
@@ -148,21 +181,20 @@ public abstract class SQLSerializer{
 		return dataSource;
 	}
 
-	protected boolean createTable(Connection con, String tableName, String sql_create_table,String sql_update_table) {
+	protected boolean createTable(Connection con, String tableName, String sql_create_table,String... sql_updates) {
 		/// Check to see if our table exists;
-		boolean table_exists = false;
-		try {
-			Statement st = con.createStatement();
-			st.executeUpdate("desc " + tableName);
-			if (DEBUG) System.out.println("table " + tableName +" exists");
-			table_exists = true;
-		} catch (SQLException e) {
-			if (DEBUG) System.out.println("table " + tableName +" does not exist");
+		Boolean exists;
+		if (TYPE == SQLType.SQLITE){
+			exists = getBoolean("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='"+tableName+"';");
+		} else {
+			List<Object> objs = getObjects("SHOW TABLES LIKE '"+tableName+"';");
+			exists = objs!=null && objs.size() == 1;
 		}
-		/// If the table exists nothing left to do
-		if (table_exists){
-			return true;
-		}
+		if (DEBUG) System.out.println("table " + tableName +" exists =" + exists);
+		
+		if (exists != null && exists)
+			return true; /// If the table exists nothing left to do
+		 
 		/// Create our table and index
 		String strStmt = sql_create_table;
 		Statement st = null;
@@ -175,6 +207,24 @@ public abstract class SQLSerializer{
 			System.err.println("Failed in creating Table " +strStmt + " result=" + result);
 			e.printStackTrace();
 			return false;
+		}
+		/// Updates and indexes
+		if (sql_updates != null){
+			for (String sql_update: sql_updates){
+				if (sql_update == null)
+					continue;
+				strStmt = sql_update;
+				try {
+					st = con.createStatement();
+					result = st.executeUpdate(strStmt);
+					if (DEBUG) System.out.println("Update Table with stmt=" + strStmt);
+				} catch (SQLException e) {
+					System.err.println("Failed in updating Table " +strStmt + " result=" + result);
+					e.printStackTrace();
+					return false;
+				}				
+			}
+			
 		}
 
 		return true;
@@ -223,7 +273,12 @@ public abstract class SQLSerializer{
 			ps.executeBatch();
 			con.commit();
 		} catch(Exception e){
-			System.err.println("statement = " + ps);
+			System.err.println("statement = " + updateStatement +" preparedStatement="+ps);
+			for (List<Object> objs : batch){
+				for(Object o: objs){
+					System.err.print(o+",");}
+				System.err.println();
+			}
 			e.printStackTrace();
 		} finally {
 			closeConnection(con);

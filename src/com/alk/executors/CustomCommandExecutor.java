@@ -36,7 +36,9 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 	 * What to display when this happens
 	 * @param sender
 	 */
-	protected abstract void showHelp(CommandSender sender, Command command, String label);
+	protected void showHelp(CommandSender sender, Command command, String label){
+		help(sender,command,null);
+	}
 
 	protected boolean hasMethod(String method){
 		return methods.containsKey(method);
