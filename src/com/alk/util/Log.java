@@ -38,5 +38,8 @@ public class Log {
     public static String colorChat(String msg) {
         return msg.replaceAll("&", COLOR_MC_CHAR);
     }
+	public static void debug(String string) {
+		System.out.println(string);
+	}
 
 }

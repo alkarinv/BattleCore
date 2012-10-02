@@ -3,11 +3,12 @@ package com.alk.serializers;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import com.alk.executors.CustomCommandExecutor.InvalidArgumentException;
 import com.alk.serializers.SQLSerializer.SQLType;
 import com.alk.util.Log;
 
 public class SQLSerializerConfig {
-
+	
 	public static void configureSQL(JavaPlugin plugin, SQLSerializer sql, ConfigurationSection cs) {
 		String type = cs.getString("type");
 		String url = cs.getString("url");
@@ -21,7 +22,10 @@ public class SQLSerializerConfig {
 	public static void configureSQL(SQLSerializer sql, String type, String urlOrPath, 
 			String db, String port, String user, String password) {
 		try{
-			if (db != null) sql.setDB(db);
+			if (db != null){
+				verifyDBName(db);
+				sql.setDB(db);
+			}
 			if (type == null || type.equalsIgnoreCase("mysql")){
 				sql.setType(SQLType.MYSQL);
 				if (urlOrPath==null) urlOrPath = "localhost";
@@ -37,6 +41,16 @@ public class SQLSerializerConfig {
 			sql.init();
 		} catch (Exception e){
 			Log.err("Error configuring sql");
+			Log.err("Error message = " + e.getMessage());
+			e.printStackTrace();
+		}
+	}
+
+	public static void verifyDBName(String db) {
+		try {
+			Integer.valueOf(db);
+			throw new InvalidArgumentException("Database name cannot be all numbers!");
+		} catch (Exception e){
 		}
 	}
 
