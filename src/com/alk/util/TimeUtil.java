@@ -1,7 +1,6 @@
 package com.alk.util;
 
 import java.text.SimpleDateFormat;
-import java.util.TimeZone;
 
 public class TimeUtil {
 	static final String version = "TimeUtil 1.0";

@@ -10,6 +10,8 @@ import com.alk.util.Log;
 public class SQLSerializerConfig {
 	
 	public static void configureSQL(JavaPlugin plugin, SQLSerializer sql, ConfigurationSection cs) {
+//		System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@  " + sql);
+
 		String type = cs.getString("type");
 		String url = cs.getString("url");
 		if (type != null && type.equalsIgnoreCase("sqlite")){
@@ -22,8 +24,9 @@ public class SQLSerializerConfig {
 	public static void configureSQL(SQLSerializer sql, String type, String urlOrPath, 
 			String db, String port, String user, String password) {
 		try{
+//			Log.debug("########################################  " + db);
 			if (db != null){
-				verifyDBName(db);
+				db = wrapDBName(db);
 				sql.setDB(db);
 			}
 			if (type == null || type.equalsIgnoreCase("mysql")){
@@ -46,12 +49,16 @@ public class SQLSerializerConfig {
 		}
 	}
 
-	public static void verifyDBName(String db) {
+	public static String wrapDBName(String db) {
+//		Log.debug("1###################################  db = " + db);
 		try {
 			Integer.valueOf(db);
+//			db = "`"+db+"`";
+//			Log.debug("###################################  db = " + db);
 			throw new InvalidArgumentException("Database name cannot be all numbers!");
 		} catch (Exception e){
 		}
+		return db;
 	}
 
 }

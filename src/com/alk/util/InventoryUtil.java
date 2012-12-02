@@ -11,9 +11,11 @@ import net.minecraft.server.Container;
 import net.minecraft.server.ContainerPlayer;
 import net.minecraft.server.EntityHuman;
 import net.minecraft.server.EntityPlayer;
+import net.minecraft.server.NBTTagCompound;
 
 import org.bukkit.Material;
 import org.bukkit.craftbukkit.entity.CraftPlayer;
+import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -35,6 +37,7 @@ public class InventoryUtil {
 		public Enchantment e;
 		public Integer lvl;
 		boolean all = false;
+		@Override
 		public String toString(){return  (e !=null?e.getName():"null")+":" + lvl;}
 	}
 
@@ -43,27 +46,27 @@ public class InventoryUtil {
 
 	public static Enchantment getEnchantmentByCommonName(String iname){
 		iname = iname.toLowerCase();
-		if (iname.contains("smite")) return Enchantment.getByName("DAMAGE_UNDEAD"); 
-		if (iname.contains("sharp")) return Enchantment.getByName("DAMAGE_ALL"); 
-		if (iname.contains("fire") && iname.contains("prot")) return Enchantment.getByName("PROTECTION_FIRE"); 
-		if (iname.contains("fire")) return Enchantment.getByName("FIRE_ASPECT"); 
-		if (iname.contains("exp") && iname.contains("prot")) return Enchantment.getByName("PROTECTION_EXPLOSIONS"); 
-		if (iname.contains("blast") && iname.contains("prot")) return Enchantment.getByName("PROTECTION_EXPLOSIONS"); 
-		if (iname.contains("arrow") && iname.contains("prot")) return Enchantment.getByName("PROTECTION_PROJECTILE"); 
-		if (iname.contains("proj") && iname.contains("prot")) return Enchantment.getByName("PROTECTION_PROJECTILE"); 
-		if (iname.contains("respiration")) return Enchantment.getByName("OXYGEN"); 
-		if (iname.contains("fall")) return Enchantment.getByName("PROTECTION_FALL"); 
-		if (iname.contains("prot")) return Enchantment.getByName("PROTECTION_ENVIRONMENTAL"); 
-		if (iname.contains("respiration")) return Enchantment.getByName("OXYGEN"); 
-		if (iname.contains("oxygen")) return Enchantment.getByName("OXYGEN"); 
-		if (iname.contains("aqua")) return Enchantment.getByName("WATER_WORKER"); 
-		if (iname.contains("arth")) return Enchantment.getByName("DAMAGE_ARTHROPODS"); 
-		if (iname.contains("knockback")) return Enchantment.getByName("KNOCKBACK"); 
-		if (iname.contains("loot")) return Enchantment.getByName("LOOT_BONUS_MOBS"); 
-		if (iname.contains("dig")) return Enchantment.getByName("DIG_SPEED"); 
-		if (iname.contains("silk")) return Enchantment.getByName("SILK_TOUCH"); 
-		if (iname.contains("unbreaking")) return Enchantment.getByName("DURABILITY"); 
-		if (iname.contains("dura")) return Enchantment.getByName("DURABILITY"); 
+		if (iname.contains("smite")) return Enchantment.getByName("DAMAGE_UNDEAD");
+		if (iname.contains("sharp")) return Enchantment.getByName("DAMAGE_ALL");
+		if (iname.contains("fire") && iname.contains("prot")) return Enchantment.getByName("PROTECTION_FIRE");
+		if (iname.contains("fire")) return Enchantment.getByName("FIRE_ASPECT");
+		if (iname.contains("exp") && iname.contains("prot")) return Enchantment.getByName("PROTECTION_EXPLOSIONS");
+		if (iname.contains("blast") && iname.contains("prot")) return Enchantment.getByName("PROTECTION_EXPLOSIONS");
+		if (iname.contains("arrow") && iname.contains("prot")) return Enchantment.getByName("PROTECTION_PROJECTILE");
+		if (iname.contains("proj") && iname.contains("prot")) return Enchantment.getByName("PROTECTION_PROJECTILE");
+		if (iname.contains("respiration")) return Enchantment.getByName("OXYGEN");
+		if (iname.contains("fall")) return Enchantment.getByName("PROTECTION_FALL");
+		if (iname.contains("prot")) return Enchantment.getByName("PROTECTION_ENVIRONMENTAL");
+		if (iname.contains("respiration")) return Enchantment.getByName("OXYGEN");
+		if (iname.contains("oxygen")) return Enchantment.getByName("OXYGEN");
+		if (iname.contains("aqua")) return Enchantment.getByName("WATER_WORKER");
+		if (iname.contains("arth")) return Enchantment.getByName("DAMAGE_ARTHROPODS");
+		if (iname.contains("knockback")) return Enchantment.getByName("KNOCKBACK");
+		if (iname.contains("loot")) return Enchantment.getByName("LOOT_BONUS_MOBS");
+		if (iname.contains("dig")) return Enchantment.getByName("DIG_SPEED");
+		if (iname.contains("silk")) return Enchantment.getByName("SILK_TOUCH");
+		if (iname.contains("unbreaking")) return Enchantment.getByName("DURABILITY");
+		if (iname.contains("dura")) return Enchantment.getByName("DURABILITY");
 		return null;
 	}
 
@@ -107,9 +110,9 @@ public class InventoryUtil {
 
 	public static boolean hasArmor(Player p) {
 		PlayerInventory pi= p.getInventory();
-		return(	(pi.getBoots() != null && pi.getBoots().getType() != Material.AIR) && 
-				(pi.getHelmet() != null && pi.getBoots().getType() != Material.AIR) && 
-				(pi.getLeggings() != null && pi.getBoots().getType() != Material.AIR) && 
+		return(	(pi.getBoots() != null && pi.getBoots().getType() != Material.AIR) &&
+				(pi.getHelmet() != null && pi.getBoots().getType() != Material.AIR) &&
+				(pi.getLeggings() != null && pi.getBoots().getType() != Material.AIR) &&
 				(pi.getChestplate() != null && pi.getBoots().getType() != Material.AIR) );
 	}
 
@@ -229,7 +232,7 @@ public class InventoryUtil {
 		for (ItemStack is : inv.getArmorContents()){
 			if (is != null && is.getType() == itemType.getType()){
 				return true;}
-		}		
+		}
 		return false;
 	}
 
@@ -247,7 +250,7 @@ public class InventoryUtil {
 		}
 
 		EntityHuman eh = ((CraftPlayer)p).getHandle();
-		try { 
+		try {
 			/// check crafting square
 			ContainerPlayer cp = (ContainerPlayer) eh.defaultContainer;
 			for (net.minecraft.server.ItemStack is: cp.craftInventory.getContents()){
@@ -255,7 +258,7 @@ public class InventoryUtil {
 					return true;
 			}
 			/// Check for a workbench
-			Container container = (Container) eh.activeContainer;
+			Container container = eh.activeContainer;
 			final int size = container.b.size();
 			for (int i=0;i< size;i++){
 				net.minecraft.server.ItemStack is = container.getSlot(i).getItem();
@@ -292,16 +295,16 @@ public class InventoryUtil {
 				case LEGGINGS: inv.setLeggings(itemStack); break;
 				case BOOTS: inv.setBoots(itemStack); break;
 				}
-			} 
+			}
 			if (!empty){
 				if (better){
 					addItemToInventory(inv, oldArmor,oldArmor.getAmount());
 				} else {
-					addItemToInventory(inv, itemStack,stockAmount);			
+					addItemToInventory(inv, itemStack,stockAmount);
 				}
-			}			
+			}
 		} else {
-			addItemToInventory(inv, itemStack,stockAmount);			
+			addItemToInventory(inv, itemStack,stockAmount);
 		}
 		if (update)
 			try { player.updateInventory(); } catch (Exception e){}
@@ -392,7 +395,7 @@ public class InventoryUtil {
 					//						is.id =0;
 					//						is.count =0;
 					//					}
-					//						
+					//
 					//				}
 
 				} catch (Exception e){
@@ -413,11 +416,29 @@ public class InventoryUtil {
 		return Material.getMaterial(id).toString();
 	}
 
+	public static String getCustomName(ItemStack item) {
+		if (!(item instanceof CraftItemStack)) {
+			item = new CraftItemStack(item);}
+
+		CraftItemStack cis = (CraftItemStack) item;
+		/// Check for custom display names (that aren't empty)
+		if (cis.getHandle() != null){
+			NBTTagCompound tag = cis.getHandle().getTag();
+			if (tag != null) {
+				NBTTagCompound display = tag.getCompound("display");
+				if (display != null && display.getString("Name")!=null && !display.getString("Name").isEmpty()){
+					return display.getString("Name");}
+			}
+		}
+		return item.getType().name().toLowerCase() ;
+	}
+
+
 	@SuppressWarnings("deprecation")
 	public static void addItemsToInventory(Player p, List<ItemStack> items) {
 		for (ItemStack is : items)
 			InventoryUtil.addItemToInventory(p, is.clone(), is.getAmount(), false);
-				try { p.updateInventory(); } catch (Exception e){}
+		try { p.updateInventory(); } catch (Exception e){}
 	}
 
 	public static ItemStack parseItem(String str) throws Exception{
@@ -458,7 +479,7 @@ public class InventoryUtil {
 		if (index != -1){
 			try {lvl = Integer.parseInt(str.substring(index + 1)); } catch (Exception err){}
 			str = str.substring(0,index);
-		} 
+		}
 
 		//        System.out.println("String = <" + str +">   " + lvl);
 		try {e = Enchantment.getById(Integer.valueOf(str));} catch (Exception err){}
@@ -482,7 +503,7 @@ public class InventoryUtil {
 			EnchantmentWithLevel ewl = getEnchantment(s);
 			if (ewl != null){
 				if (ewl.all){
-					return addAllEnchantments(is);}					
+					return addAllEnchantments(is);}
 				encs.put(ewl.e, ewl.lvl);
 			}
 		}
@@ -514,7 +535,7 @@ public class InventoryUtil {
 	 */
 	public static String getItemString(ItemStack is) {
 		StringBuilder sb = new StringBuilder();
-		sb.append(is.getType().toString() +":"+(byte)is.getData().getData()+" ");
+		sb.append(is.getType().toString() +":"+is.getData().getData()+" ");
 		Map<Enchantment,Integer> encs = is.getEnchantments();
 		for (Enchantment enc : encs.keySet()){
 			sb.append(enc.getName() + ":" + encs.get(enc)+" ");
@@ -546,85 +567,83 @@ public class InventoryUtil {
 		PlayerInventory inv = p.getInventory();
 		for (ItemStack is: items){
 			int amount = getItemAmountFromInventory(inv, is);
-//			System.out.println("Checking " + is +"   amount = " + amount);
+			//			System.out.println("Checking " + is +"   amount = " + amount);
 			if (amount < is.getAmount())
 				return false;
 		}
 		return true;
 	}
-	
+
 	public static void removeItems(Player p, Collection<ItemStack> items) {
-//		PlayerInventory inv = p.getInventory();
+		//		PlayerInventory inv = p.getInventory();
 		for (ItemStack is: items){
 			removeItem(p.getInventory(),is);
 		}
 	}
 
-    public static int first(Inventory inv, ItemStack is1) {
-        if (is1 == null) {
-            return -1;
-        }
-        ItemStack[] inventory = inv.getContents();
-        for (int i = 0; i < inventory.length; i++) {
-        	ItemStack is2 = inventory[i];
-        	if (is2 == null) continue;
-            if (is1.getTypeId() == is2.getTypeId() && is1.getDurability() == is2.getDurability()) {
-                return i;
-            }
-        }
-        return -1;
-    }
-	  /**
-     * This is nearly a direct copy of the removeItem from CraftBukkit
-     * The difference is my ItemStack == ItemStack comparison (found in first())
-     * there I change it to go by itemid and datavalue
-     * as opposed to itemid and quantity
-     * @param inv
-     * @param items
-     * @return
-     */
-    public static HashMap<Integer, ItemStack> removeItem(Inventory inv, ItemStack... items) {
-        HashMap<Integer, ItemStack> leftover = new HashMap<Integer, ItemStack>();
+	public static int first(Inventory inv, ItemStack is1) {
+		if (is1 == null) {
+			return -1;
+		}
+		ItemStack[] inventory = inv.getContents();
+		for (int i = 0; i < inventory.length; i++) {
+			ItemStack is2 = inventory[i];
+			if (is2 == null) continue;
+			if (is1.getTypeId() == is2.getTypeId() && is1.getDurability() == is2.getDurability()) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	/**
+	 * This is nearly a direct copy of the removeItem from CraftBukkit
+	 * The difference is my ItemStack == ItemStack comparison (found in first())
+	 * there I change it to go by itemid and datavalue
+	 * as opposed to itemid and quantity
+	 * @param inv
+	 * @param items
+	 * @return
+	 */
+	public static HashMap<Integer, ItemStack> removeItem(Inventory inv, ItemStack... items) {
+		HashMap<Integer, ItemStack> leftover = new HashMap<Integer, ItemStack>();
 
-        for (int i = 0; i < items.length; i++) {
-            ItemStack item = items[i];
-            int toDelete = item.getAmount();
+		for (int i = 0; i < items.length; i++) {
+			ItemStack item = items[i];
+			int toDelete = item.getAmount();
 
-            while (true) {
-//            	System.out.println("inv= " + inv + "   " + items.length   + "    item=" + item);
-                int first = first(inv, item);
-//            	System.out.println("first= " + first);
+			while (true) {
+				//            	System.out.println("inv= " + inv + "   " + items.length   + "    item=" + item);
+				int first = first(inv, item);
+				//            	System.out.println("first= " + first);
 
-                // Drat! we don't have this type in the inventory
-                if (first == -1) {
-                    item.setAmount(toDelete);
-                    leftover.put(i, item);
-                    break;
-                } else {
-                    ItemStack itemStack = inv.getItem(first);
-                    int amount = itemStack.getAmount();
+				// Drat! we don't have this type in the inventory
+				if (first == -1) {
+					item.setAmount(toDelete);
+					leftover.put(i, item);
+					break;
+				} else {
+					ItemStack itemStack = inv.getItem(first);
+					int amount = itemStack.getAmount();
 
-                    if (amount <= toDelete) {
-                        toDelete -= amount;
-                        // clear the slot, all used up
-                        inv.setItem(first, null);
-                    } else {
-                        // split the stack and store
-                        itemStack.setAmount(amount - toDelete);
-                        inv.setItem(first, itemStack);
-                        toDelete = 0;
-                    }
-                }
+					if (amount <= toDelete) {
+						toDelete -= amount;
+						// clear the slot, all used up
+						inv.setItem(first, null);
+					} else {
+						// split the stack and store
+						itemStack.setAmount(amount - toDelete);
+						inv.setItem(first, itemStack);
+						toDelete = 0;
+					}
+				}
 
-                // Bail when done
-                if (toDelete <= 0) {
-                    break;
-                }
-            }
-        }
-        return leftover;
-    }
-
-
+				// Bail when done
+				if (toDelete <= 0) {
+					break;
+				}
+			}
+		}
+		return leftover;
+	}
 
 }

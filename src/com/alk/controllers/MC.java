@@ -28,6 +28,7 @@ public class MC {
 			Formatter form = new Formatter(buf);
 
 			form.format(msg, varArgs);
+			form.close();
 			return colorChat(buf.toString());
 		} catch(Exception e){
 			System.err.println("Error getting message " + prefix + "." + node);
@@ -43,6 +44,7 @@ public class MC {
 		Formatter form = new Formatter(buf);
 		try{
 			form.format(msg, varArgs);
+			form.close();
 		} catch(Exception e){
 			System.err.println("Error getting message " + prefix + "." + node);
 			for (Object o: varArgs){ System.err.println("argument=" + o);}
@@ -58,6 +60,7 @@ public class MC {
 		Formatter form = new Formatter(buf);
 		try{
 			form.format(msg, varArgs);
+			form.close();
 		} catch(Exception e){
 			System.err.println("Error getting message " + prefix + "." + node);
 			for (Object o: varArgs){ System.err.println("argument=" + o);}

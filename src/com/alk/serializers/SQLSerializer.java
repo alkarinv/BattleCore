@@ -20,16 +20,16 @@ import org.apache.commons.pool.impl.GenericKeyedObjectPoolFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
 
 /**
- * 
+ *
  * @author Alkarin
  *
  */
 public abstract class SQLSerializer{
-	static public final String version = "1.3"; 
-	
+	static public final String version = "1.3";
+
 	static protected final boolean DEBUG = false;
 	static final boolean DEBUG_UPDATE = false;
-
+//	public static class SQLException
 	/**
 	 * Valid SQL Types
 	 * @author alkarin
@@ -39,13 +39,13 @@ public abstract class SQLSerializer{
 		MYSQL("MySQL","com.mysql.jdbc.Driver"), SQLITE("SQLite","org.sqlite.JDBC");
 		String name, driver;
 		SQLType(String name, String driver){
-			this.name = name; 
+			this.name = name;
 			this.driver = driver;
 		}
 		public String getName(){return name;}
 		public String getDriver(){return driver;}
 	};
-	
+
 
 	static public final int MAX_NAME_LENGTH = 16;
 
@@ -59,7 +59,7 @@ public abstract class SQLSerializer{
 	protected String USERNAME = "root";
 	protected String PASSWORD = "";
 
-	private String create_database = "CREATE DATABASE IF NOT EXISTS " + DB;
+	private String create_database = "CREATE DATABASE IF NOT EXISTS `" + DB+"`";
 
 	public String getURL() {return URL;}
 	public void setURL(String url) {URL = url;}
@@ -79,7 +79,7 @@ public abstract class SQLSerializer{
 	public String getDB() {return DB;}
 	public void setDB(String dB) {
 		DB = dB;
-		create_database = "CREATE DATABASE IF NOT EXISTS " + DB;
+		create_database = "CREATE DATABASE IF NOT EXISTS `" + DB+"`";
 	}
 
 	protected class RSCon{
@@ -87,16 +87,16 @@ public abstract class SQLSerializer{
 		public Connection con;
 	}
 
-	public Connection getConnection(){
+	public Connection getConnection() throws SQLException{
 		return getConnection(true);
 	}
-	public Connection getConnection(boolean autoCommit){
-		if (ds == null)
-			return null;
+	public Connection getConnection(boolean autoCommit) throws SQLException{
+		if (ds == null){
+			throw new java.sql.SQLException("Connection is null.  Did you intiliaze your SQL connection?");}
 		try {
 			Connection con = ds.getConnection();
 			con.setAutoCommit(autoCommit);
-			return con; 
+			return con;
 		} catch (SQLException e1) {
 			e1.printStackTrace();
 			return null;
@@ -106,7 +106,7 @@ public abstract class SQLSerializer{
 	public void closeConnection(RSCon rscon) {
 		if (rscon == null || rscon.con == null)
 			return;
-		try {rscon.con.close();} catch (SQLException e) {}		
+		try {rscon.con.close();} catch (SQLException e) {}
 	}
 	public void closeConnection(Connection con) {
 		if (con ==null)
@@ -131,8 +131,8 @@ public abstract class SQLSerializer{
 			break;
 		case MYSQL:
 		default:
-			datasourceString = "jdbc:mysql://"+URL+":"+PORT+"/"+DB;
-			connectionString = "jdbc:mysql://"+URL+":" + PORT;
+			datasourceString = "jdbc:mysql://"+URL+":"+PORT+"/"+DB+"?autoReconnect=true";
+			connectionString = "jdbc:mysql://"+URL+":" + PORT+"?autoReconnect=true";
 			break;
 		}
 
@@ -155,8 +155,8 @@ public abstract class SQLSerializer{
 				e.printStackTrace();
 				return false;
 			} finally{
-				closeConnection(con);			
-			}			
+				closeConnection(con);
+			}
 		}
 		return true;
 	}
@@ -168,15 +168,18 @@ public abstract class SQLSerializer{
 
 		connectionPool.setMinIdle( minIdle );
 		connectionPool.setMaxActive( maxActive );
-
-		ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(connectURI,username, password);
+		connectionPool.setTestOnBorrow(true); /// test before the connection is made,
+        ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(connectURI,username, password);
 
 		final boolean defaultReadOnly = false;
 		final boolean defaultAutoCommit = true;
 		final String validationQuery = null;
 		KeyedObjectPoolFactory statementPool = new GenericKeyedObjectPoolFactory(null);
-		new PoolableConnectionFactory(connectionFactory, connectionPool, statementPool,
-				validationQuery, defaultReadOnly, defaultAutoCommit);		
+		PoolableConnectionFactory factory = new PoolableConnectionFactory(connectionFactory, connectionPool,
+				statementPool, validationQuery, defaultReadOnly, defaultAutoCommit);
+		/// validate the connection with this statement (hopefully between this and setTestOnBorrow(true) will
+		/// avoid the previous connection timeouts with mysql
+		factory.setValidationQuery("select 1");
 		PoolingDataSource dataSource = new PoolingDataSource(connectionPool);
 		return dataSource;
 	}
@@ -191,10 +194,10 @@ public abstract class SQLSerializer{
 			exists = objs!=null && objs.size() == 1;
 		}
 		if (DEBUG) System.out.println("table " + tableName +" exists =" + exists);
-		
+
 		if (exists != null && exists)
 			return true; /// If the table exists nothing left to do
-		 
+
 		/// Create our table and index
 		String strStmt = sql_create_table;
 		Statement st = null;
@@ -222,16 +225,23 @@ public abstract class SQLSerializer{
 					System.err.println("Failed in updating Table " +strStmt + " result=" + result);
 					e.printStackTrace();
 					return false;
-				}				
+				}
 			}
-			
+
 		}
 
 		return true;
 	}
 
 	protected RSCon executeQuery(String strRawStmt, Object... varArgs){
-		Connection con = getConnection();  /// Our database connection
+		Connection con = null;
+		try {
+			con = getConnection();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		}
+
 		PreparedStatement ps = null;
 		RSCon rscon = null;
 
@@ -251,7 +261,13 @@ public abstract class SQLSerializer{
 
 
 	protected void executeBatch(String updateStatement, List<List<Object>> batch) {
-		Connection con = getConnection();
+		Connection con = null;
+		try {
+			con = getConnection();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return;
+		}
 		PreparedStatement ps = null;
 //		System.out.println("executingBatch = " + updateStatement + "  batch=" + batch);
 		try{con.setAutoCommit(false);} catch(Exception e){e.printStackTrace();}
@@ -303,7 +319,14 @@ public abstract class SQLSerializer{
 
 	protected int executeUpdate(String strRawStmt, Object... varArgs){
 		int result= -1;
-		Connection con = getConnection();  /// Our database connection
+		Connection con = null;
+		try {
+			con = getConnection();
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return -1;
+		}
+
 		PreparedStatement ps = null;
 		try {
 			ps = getStatement(strRawStmt,con,varArgs);
@@ -332,7 +355,7 @@ public abstract class SQLSerializer{
 		} finally{
 			try{rscon.con.close();}catch(Exception e){}
 		}
-		return null;		
+		return null;
 	}
 
 	public Integer getInteger(String query, Object... varArgs){
@@ -349,7 +372,41 @@ public abstract class SQLSerializer{
 		}finally{
 			try{rscon.con.close();}catch(Exception e){}
 		}
-		return null;		
+		return null;
+	}
+
+	public Short getShort(String query, Object... varArgs){
+		RSCon rscon = executeQuery(query,varArgs);
+		if (rscon == null || rscon.con == null)
+			return null;
+		try {
+			ResultSet rs = rscon.rs;
+			while (rs.next()){
+				return rs.getShort(1);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			try{rscon.con.close();}catch(Exception e){}
+		}
+		return null;
+	}
+
+	public Long getLong(String query, Object... varArgs){
+		RSCon rscon = executeQuery(query,varArgs);
+		if (rscon == null || rscon.con == null)
+			return null;
+		try {
+			ResultSet rs = rscon.rs;
+			while (rs.next()){
+				return rs.getLong(1);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			try{rscon.con.close();}catch(Exception e){}
+		}
+		return null;
 	}
 
 	public Boolean getBoolean(String query, Object... varArgs){
@@ -362,14 +419,14 @@ public abstract class SQLSerializer{
 				Integer i = rs.getInt(1);
 				if (i==null)
 					return null;
-				return i > 0; 
+				return i > 0;
 			}
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}finally{
 			try{rscon.con.close();}catch(Exception e){}
 		}
-		return null;		
+		return null;
 	}
 
 	public String getString(String query, Object... varArgs){
@@ -386,7 +443,7 @@ public abstract class SQLSerializer{
 		}finally{
 			try{rscon.con.close();}catch(Exception e){}
 		}
-		return null;		
+		return null;
 	}
 
 	public List<Object> getObjects(String query, Object... varArgs){
@@ -409,7 +466,7 @@ public abstract class SQLSerializer{
 		}finally{
 			try{rscon.con.close();}catch(Exception e){}
 		}
-		return null;		
+		return null;
 	}
 
 }

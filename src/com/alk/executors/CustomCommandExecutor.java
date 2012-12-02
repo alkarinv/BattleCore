@@ -26,7 +26,8 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 	static final String version = "1.1";
 	static final boolean DEBUG = false;
 	static final String DEFAULT_CMD = "_dcmd_";
-	
+
+
 	/// The map of our methods
 	private HashMap<String,TreeMap<Integer,MethodWrapper>> methods = new HashMap<String,TreeMap<Integer,MethodWrapper>>();
 	protected HashMap<MCCommand, String> usage = new HashMap<MCCommand, String>();
@@ -77,7 +78,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 				continue;
 
 			if (mc.cmds().length == 0){ /// There is no subcommand. just the command itself with arguments
-				addMethod(obj, method, mc, DEFAULT_CMD);				
+				addMethod(obj, method, mc, DEFAULT_CMD);
 			}
 			/// For each of the cmds, store them with the method
 			for (String cmd : mc.cmds()){
@@ -107,16 +108,16 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 
 	private String createUsage(Method method) {
 		MCCommand cmd = method.getAnnotation(MCCommand.class);
-		
+
 		StringBuilder sb = new StringBuilder();
 		if (cmd.cmds().length > 0 )
 			sb.append(cmd.cmds()[0] +" ");
 		boolean firstPlayerSender = cmd.inGame();
-		for (Class<?> theclass : method.getParameterTypes()){			
+		for (Class<?> theclass : method.getParameterTypes()){
 			if (Player.class ==theclass){
 				if (firstPlayerSender)
 					firstPlayerSender = false;
-				else 
+				else
 					sb.append("<player> ");
 			} else if (OfflinePlayer.class ==theclass){
 				sb.append("<player> ");
@@ -139,13 +140,13 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 		/// No method to handle, show some help
 		TreeMap<Integer,MethodWrapper> methodmap = methods.get(DEFAULT_CMD);
-		System.out.println(command.getName() +"   " + label + "      cmdlabel = " + command.getLabel());
+//		System.out.println(command.getName() +"   " + label + "      cmdlabel = " + command.getLabel());
 		if (args.length == 0 && (methodmap == null || methodmap.isEmpty())
 				|| (args.length > 0 && args[0].equals("?"))){
 			showHelp(sender, command);
 			return true;
 		}
-		
+
 		/// Find our method, and verify all the annotations
 		if (args.length > 0){
 			methodmap = methods.get(args[0].toLowerCase());
@@ -166,7 +167,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 			final boolean isOp = sender == null || sender.isOp() || sender instanceof ConsoleCommandSender;
 
 			// Check perms
-			if ( (mccmd.op() && !isOp) || (!mccmd.perm().isEmpty() && !sender.hasPermission(mccmd.perm()) )) 
+			if ( (mccmd.op() && !isOp) || (!mccmd.perm().isEmpty() && !sender.hasPermission(mccmd.perm()) ))
 				continue;
 			try {
 				Arguments newArgs= verifyArgs(mwrapper,mccmd,sender,command, label, args);
@@ -199,10 +200,10 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 	}
 
 	static final String ONLY_INGAME =ChatColor.RED+"You need to be in game to use this command";
-	private Arguments verifyArgs(MethodWrapper mwrapper, MCCommand cmd, 
+	private Arguments verifyArgs(MethodWrapper mwrapper, MCCommand cmd,
 			CommandSender sender, Command command, String label, String[] args) throws InvalidArgumentException{
 		if (DEBUG)System.out.println("verifyArgs " + cmd +" sender=" +sender+", label=" + label+" args="+args);
-		int strIndex = cmd.cmds().length == 0 ? 0 : 1; /// Skip the label if we have a cmd 
+		int strIndex = cmd.cmds().length == 0 ? 0 : 1; /// Skip the label if we have a cmd
 		int objIndex = 0;
 
 		/// Check our permissions
@@ -232,7 +233,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 
 		/// In game check
 		if (cmd.inGame() && !isPlayer || getSenderAsPlayer && !isPlayer){
-			throw new InvalidArgumentException(ONLY_INGAME);			
+			throw new InvalidArgumentException(ONLY_INGAME);
 		}
 
 		Arguments newArgs = new Arguments(); /// Our return value
@@ -243,7 +244,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 				if (CommandSender.class == theclass){
 					objs[objIndex] = sender;
 				} else if (Command.class == theclass){
-					objs[objIndex] = command;				
+					objs[objIndex] = command;
 				} else if (Player.class ==theclass){
 					if (getSenderAsPlayer){
 						objs[objIndex] = sender;
@@ -254,11 +255,11 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 				} else if (OfflinePlayer.class ==theclass){
 					objs[objIndex] = verifyOfflinePlayer(args[strIndex++]);
 				} else if (String.class == theclass){
-					objs[objIndex] = args[strIndex++]; 
+					objs[objIndex] = args[strIndex++];
 				} else if (Integer.class == theclass){
 					objs[objIndex] = verifyInteger(args[strIndex++]);
 				} else if (String[].class == theclass){
-					objs[objIndex] = args; 
+					objs[objIndex] = args;
 				} else if (Object[].class == theclass){
 					objs[objIndex] = args;
 				} else if (Boolean.class == theclass){
@@ -362,7 +363,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 				onlyop.add(use);
 			else if (!cmd.perm().isEmpty() && !sender.hasPermission(cmd.perm()))
 				unavailable.add(use);
-			else 
+			else
 				available.add(use);
 		}
 		int npages = available.size()+unavailable.size();
@@ -375,7 +376,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 		}
 		if (command != null)
 			sendMessage(sender, "&eShowing page &6"+page +"/"+npages +"&6 :[Usage] /"+command.getName()+" help <page number>");
-		else 
+		else
 			sendMessage(sender, "&eShowing page &6"+page +"/"+npages +"&6 :[Usage] /cmd help <page number>");
 		int i=0;
 		for (String use : available){
@@ -396,7 +397,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 				if (i < (page-1) *LINES_PER_PAGE || i >= page *LINES_PER_PAGE)
 					continue;
 				sendMessage(sender, ChatColor.AQUA+"[OP only] &6"+use);
-			}			
+			}
 		}
 	}
 
@@ -404,7 +405,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 		if (message ==null) return true;
 		if (p instanceof Player){
 			if (((Player) p).isOnline())
-				p.sendMessage(colorChat(message));			
+				p.sendMessage(colorChat(message));
 		} else {
 			p.sendMessage(colorChat(message));
 		}
@@ -423,7 +424,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 		Player p = ps.iterator().next();
 		return p;
 	}
-	
+
 	public static OfflinePlayer findOfflinePlayer(String name) {
 		OfflinePlayer p;
 		try {
@@ -454,24 +455,24 @@ public abstract class CustomCommandExecutor implements CommandExecutor{
 	    int min() default 0;
 	    int max() default Integer.MAX_VALUE;
 	    int exact() default -1;
-	    
+
 	    int order() default -1;
 
 	    boolean op() default false;
 	    boolean admin() default false;
 	    String perm() default "";
-	    
+
 	    boolean inGame() default false;
 	    int[] online() default {}; /// Implies inGame = true
 	    int[] ints() default {};
-	    
+
 	    int[] ports() default {};
 	    int[] playerQuery() default {};
-	    
+
 	    String usage() default "";
 	    String usageNode() default "";
 
-		int[] alphanum() default {};   
+		int[] alphanum() default {};
 	}
 }
 
