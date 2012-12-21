@@ -13,7 +13,7 @@
 	<!-- set global properties for this build -->
 	<property name="src" location="src" />
 	<property name="bin" location="bin" />
-	<property name="lib" location="lib" />
+	<property name="lib" location="../mcjars" />
 	<target name="init" depends="clean" description="create necessary folders">
 		<mkdir dir="${bin}" />
 	</target>
@@ -21,9 +21,8 @@
 		<javac srcdir="${src}" destdir="${bin}" debug="on" debuglevel="lines,vars,source" includeantruntime="false" encoding="Cp1252">
 			<classpath>
 				<pathelement path="${lib}" />
-				<pathelement location="${lib}/CraftBukkit.jar" />
+				<pathelement location="${lib}/bukkit.jar" />
 				<pathelement location="${lib}/Vault.jar" />
-				<pathelement location="${lib}/Register.jar" />
 				<pathelement location="${lib}/includes/commons-dbcp.jar" />
 				<pathelement location="${lib}/includes/commons-pool.jar" />
 			</classpath>

@@ -7,15 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import net.minecraft.server.Container;
-import net.minecraft.server.ContainerPlayer;
-import net.minecraft.server.EntityHuman;
-import net.minecraft.server.EntityPlayer;
-import net.minecraft.server.NBTTagCompound;
-
 import org.bukkit.Material;
-import org.bukkit.craftbukkit.entity.CraftPlayer;
-import org.bukkit.craftbukkit.inventory.CraftItemStack;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -248,25 +240,6 @@ public class InventoryUtil {
 				//				System.out.println("item=" + is);
 				return true;}
 		}
-
-		EntityHuman eh = ((CraftPlayer)p).getHandle();
-		try {
-			/// check crafting square
-			ContainerPlayer cp = (ContainerPlayer) eh.defaultContainer;
-			for (net.minecraft.server.ItemStack is: cp.craftInventory.getContents()){
-				if (is != null && is.id != 0)
-					return true;
-			}
-			/// Check for a workbench
-			Container container = eh.activeContainer;
-			final int size = container.b.size();
-			for (int i=0;i< size;i++){
-				net.minecraft.server.ItemStack is = container.getSlot(i).getItem();
-				if (is != null && is.id != 0)
-					return true;
-			}
-
-		} catch (Exception e){}
 		return false;
 	}
 
@@ -357,12 +330,8 @@ public class InventoryUtil {
 	}
 
 	public static void closeInventory(Player p) {
-		EntityHuman eh = ((CraftPlayer)p).getHandle();
 		try{
-			if ((eh instanceof EntityPlayer)){
-				EntityPlayer ep = (EntityPlayer) eh;
-				ep.closeInventory();
-			}
+			p.closeInventory();
 		}catch(Exception closeInventoryError){
 			/// This almost always throws an NPE, but does its job so ignore
 		}
@@ -372,35 +341,10 @@ public class InventoryUtil {
 		try{
 			PlayerInventory inv = p.getInventory();
 			closeInventory(p);
-			EntityHuman eh = ((CraftPlayer)p).getHandle();
 			if (inv != null){
 				inv.clear();
 				inv.setArmorContents(null);
 				inv.setItemInHand(null);
-				try {
-					/// get rid of items inside the crafting square
-					ContainerPlayer cp = (ContainerPlayer) eh.defaultContainer;
-					int size = cp.craftInventory.getContents().length;
-
-					for (int i=0;i< size;i++){
-						cp.craftInventory.setItem(i, null);
-					}
-					/// Check for a workbench, dispenser
-					/// No need for this now, closing inventory before this does the trick
-					//				Container container = (Container) eh.activeContainer;
-					//				size = container.e.size();
-					//				for (int i=0;i< size;i++){
-					//					net.minecraft.server.ItemStack is = container.a(i);
-					//					if (is != null && is.id != 0){
-					//						is.id =0;
-					//						is.count =0;
-					//					}
-					//
-					//				}
-
-				} catch (Exception e){
-					e.printStackTrace();
-				}
 			}
 		} catch(Exception ee){
 			ee.printStackTrace();
@@ -417,22 +361,8 @@ public class InventoryUtil {
 	}
 
 	public static String getCustomName(ItemStack item) {
-		if (!(item instanceof CraftItemStack)) {
-			item = new CraftItemStack(item);}
-
-		CraftItemStack cis = (CraftItemStack) item;
-		/// Check for custom display names (that aren't empty)
-		if (cis.getHandle() != null){
-			NBTTagCompound tag = cis.getHandle().getTag();
-			if (tag != null) {
-				NBTTagCompound display = tag.getCompound("display");
-				if (display != null && display.getString("Name")!=null && !display.getString("Name").isEmpty()){
-					return display.getString("Name");}
-			}
-		}
-		return item.getType().name().toLowerCase() ;
+		return item.getItemMeta().getDisplayName();
 	}
-
 
 	@SuppressWarnings("deprecation")
 	public static void addItemsToInventory(Player p, List<ItemStack> items) {
