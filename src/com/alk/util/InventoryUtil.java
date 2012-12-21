@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
 
 public class InventoryUtil {
 	static final String version = "InventoryUtil 2.1.3.4";
@@ -361,7 +362,11 @@ public class InventoryUtil {
 	}
 
 	public static String getCustomName(ItemStack item) {
-		return item.getItemMeta().getDisplayName();
+		ItemMeta im = item.getItemMeta();
+		if (im == null){
+			return item.getType().name().toLowerCase();}
+		String displayName = im.getDisplayName();
+		return displayName == null || displayName.isEmpty() ? item.getType().name().toLowerCase() : displayName;
 	}
 
 	@SuppressWarnings("deprecation")
