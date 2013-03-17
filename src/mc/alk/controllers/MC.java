@@ -1,4 +1,4 @@
-package com.alk.controllers;
+package mc.alk.controllers;
 
 import java.io.File;
 import java.util.Formatter;

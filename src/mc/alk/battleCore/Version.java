@@ -1,4 +1,4 @@
-package com.alk.battleCore;
+package mc.alk.battleCore;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -14,7 +14,6 @@ public class Version implements Comparable<Object> {
 		parts = obj.toString().trim().split("\\.");
 	}
 
-	@Override
 	public int compareTo(Object o) {
 		if (o instanceof Version)
 			return compareToVersion((Version)o);

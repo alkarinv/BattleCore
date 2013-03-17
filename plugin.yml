@@ -1,6 +1,6 @@
 name: BattleCore
 
-main: com.alk.battleCore.BattleCore
+main: mc.alk.battleCore.BattleCore
 
 version: 1.2.3
 

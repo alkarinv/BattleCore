@@ -1,5 +1,6 @@
-package com.alk.controllers;
+package mc.alk.controllers;
 
+import mc.alk.util.Log;
 import net.milkbowl.vault.economy.Economy;
 
 import org.bukkit.Bukkit;
@@ -9,8 +10,6 @@ import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
-import com.alk.battleCore.BattleCore;
-import com.alk.util.Log;
 
 public class MoneyController implements Listener{
 	static boolean initialized = false;
@@ -30,33 +29,53 @@ public class MoneyController implements Listener{
 	}
 	public static boolean hasEnough(String name, float amount) {
 		if (!initialized) return true;
-		return useVault? economy.getBalance(name) >= amount : true; 
+		return useVault? economy.getBalance(name) >= amount : true;
 	}
-	public static void subtract(String name, double fee) {
-		if (!initialized) return;
-		subtract(name,(float) fee);
+
+	public static boolean hasEnough(String name, float amount, String world) {
+		return hasEnough(name,amount);
 	}
+
+	public static void subtract(String name, float amount, String world) {
+		subtract(name,amount);
+	}
+
+	public static void subtract(String name, double amount) {
+		subtract(name,(float) amount);
+	}
+
 	public static void subtract(String name, float amount) {
 		if (!initialized) return;
-		if (useVault) economy.withdrawPlayer(name, amount); 
-		
+		if (useVault) economy.withdrawPlayer(name, amount);
 	}
-	public static void add(String name, float amount) {
-		if (!initialized) return;
-		if (useVault) economy.depositPlayer(name, amount) ;
-		
+
+
+	public static void add(String name, float amount, String world) {
+		add(name,amount);
 	}
-	public static Double balance(String name) {
-		if (!initialized) return 0.0;
-		return useVault ? economy.getBalance(name) : 0;
-	}
+
 	public static void add(String name, double amount) {
 		if (!initialized) return;
 		add(name,(float)amount);
 	}
 
-	public static void setup() {
-		Bukkit.getServer().getPluginManager().registerEvents(new MoneyController(), BattleCore.getSelf());		
+	public static void add(String name, float amount) {
+		if (!initialized) return;
+		if (useVault) economy.depositPlayer(name, amount) ;
+	}
+
+	public static Double balance(String name, String world) {
+		return balance(name);
+	}
+
+	public static Double balance(String name) {
+		if (!initialized) return 0.0;
+		return useVault ? economy.getBalance(name) : 0;
+	}
+
+	public static void setup(Plugin plugin) {
+		Bukkit.getPluginManager().registerEvents(new MoneyController(), plugin);
+		checkRegisteredPlugins();
 	}
 
 	@EventHandler
@@ -74,15 +93,14 @@ public class MoneyController implements Listener{
     					getServicesManager().getRegistration(net.milkbowl.vault.economy.Economy.class);
     			if (economyProvider==null || economyProvider.getProvider() == null){
     				MoneyController.economy = null;
-    				Log.warn(BattleCore.getVersion() +" found no economy plugin. Attempts to use money in arenas might result in errors.");
+    				Log.warn("[] found no economy plugin. Attempts to use money in arenas might result in errors.");
     				return;
     			}
     			MoneyController.economy = economyProvider.getProvider();
     			useVault = hasVault = true;
     			initialized = true;
-    			Log.info(BattleCore.getVersion() +" found economy plugin Vault. [Default]");
+    			Log.info("[] found economy plugin Vault. [Default]");
     		}
     	}
-
 	}
 }

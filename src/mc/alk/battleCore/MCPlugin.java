@@ -1,18 +1,19 @@
-package com.alk.battleCore;
+package mc.alk.battleCore;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import mc.alk.util.Log;
+
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import com.alk.util.Log;
 
 public class MCPlugin extends JavaPlugin {
 
-	protected String pluginname; 
+	protected String pluginname;
 	protected String version;
 
 	@Override
@@ -21,25 +22,25 @@ public class MCPlugin extends JavaPlugin {
 		pluginname = pdfFile.getName();
 		version = pdfFile.getVersion();
 
-		Log.info(getVersion()+ " enabled!");	
+		Log.info(getVersion()+ " enabled!");
 	}
-	
+
 	@Override
 	public void onDisable() {
-		
+
 	}
 
 	protected void createPluginFolder() {
 		/// Create our plugin folder if its not there
 		File dir = this.getDataFolder();
 		if (!dir.exists()){
-			dir.mkdirs();}		
+			dir.mkdirs();}
 	}
-	
+
 	public String getVersion() {
 		return "[" + pluginname + " v" + version +"]";
 	}
-		
+
 	public File load(String default_file, String config_file) {
 		File file = new File(config_file);
 		if (!file.exists()){ /// Create a new file from our default example
@@ -57,6 +58,6 @@ public class MCPlugin extends JavaPlugin {
 		}
 		return file;
 	}
-	
+
 
 }

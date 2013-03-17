@@ -1,5 +1,6 @@
-package com.alk.util;
+package mc.alk.util;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -7,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
+import mc.alk.util.compat.IInventoryHelper;
+
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -16,8 +20,26 @@ import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 
 public class InventoryUtil {
-	static final String version = "InventoryUtil 2.1.3.4";
+	static final String version = "InventoryUtil 2.1.4";
 	static final boolean DEBUG = false;
+	static IInventoryHelper handler = null;
+
+	static {
+		try {
+			final String pkg = Bukkit.getServer().getClass().getPackage().getName();
+			String version = pkg.substring(pkg.lastIndexOf('.') + 1);
+			final Class<?> clazz;
+			if (version.equalsIgnoreCase("craftbukkit")){
+				clazz = Class.forName("mc.alk.arena.util.compat.v1_2_5.InventoryHelper");
+			} else{
+				clazz = Class.forName("mc.alk.arena.util.compat.v1_4_6.InventoryHelper");
+			}
+			Class<?>[] args = {};
+			handler = (IInventoryHelper) clazz.getConstructor(args).newInstance((Object[])args);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 
 	public static class Armor{
 		public ArmorLevel level;
@@ -245,43 +267,78 @@ public class InventoryUtil {
 	}
 
 	public static void addItemToInventory(Player player, ItemStack itemStack) {
-		addItemToInventory(player,itemStack,itemStack.getAmount(),true);
+		addItemToInventory(player,itemStack,itemStack.getAmount(),true,false,null);
 	}
 
-	public static void addItemToInventory(Player player, ItemStack itemStack, int stockAmount) {
-		addItemToInventory(player,itemStack,stockAmount,true);
-	}
-	@SuppressWarnings("deprecation")
 	public static void addItemToInventory(Player player, ItemStack itemStack, int stockAmount, boolean update) {
+		addItemToInventory(player,itemStack,stockAmount,update,false,null);
+	}
+
+	public static void addItemsToInventory(Player p, List<ItemStack> items, boolean ignoreCustomHelmet) {
+		addItemsToInventory(p,items, ignoreCustomHelmet,null);
+	}
+
+	@SuppressWarnings("deprecation")
+	public static void addItemsToInventory(Player p, List<ItemStack> items, boolean ignoreCustomHelmet, Color color) {
+		for (ItemStack is : items){
+			InventoryUtil.addItemToInventory(p, is.clone(), is.getAmount(), false, ignoreCustomHelmet, color);
+		}
+		try { p.updateInventory(); } catch (Exception e){}
+	}
+
+	public static void addItemToInventory(Player player, ItemStack itemStack, int stockAmount,
+			boolean update, boolean ignoreCustomHelmet) {
+		addItemToInventory(player,itemStack,stockAmount,update,ignoreCustomHelmet,null);
+	}
+
+	@SuppressWarnings("deprecation")
+	public static void addItemToInventory(Player player, ItemStack itemStack, int stockAmount,
+			boolean update, boolean ignoreCustomHelmet, Color color) {
 		PlayerInventory inv = player.getInventory();
 		Material itemType =itemStack.getType();
 		if (armor.containsKey(itemType)){
-			/// no item: add to armor slot
-			/// item better: add old to inventory, new to armor slot
-			/// item notbetter: add to inventory
-			ItemStack oldArmor = getArmorSlot(inv,armor.get(itemType));
-			boolean empty = (oldArmor == null || oldArmor.getType() == Material.AIR);
-			boolean better = empty ? false : armorSlotBetter(armor.get(oldArmor.getType()),armor.get(itemType));
-			if (empty || better){
-				switch (armor.get(itemType).type){
-				case HELM: inv.setHelmet(itemStack); break;
-				case CHEST: inv.setChestplate(itemStack); break;
-				case LEGGINGS: inv.setLeggings(itemStack); break;
-				case BOOTS: inv.setBoots(itemStack); break;
-				}
-			}
-			if (!empty){
-				if (better){
-					addItemToInventory(inv, oldArmor,oldArmor.getAmount());
-				} else {
-					addItemToInventory(inv, itemStack,stockAmount);
-				}
-			}
+			addArmorToInventory(inv,itemStack,stockAmount,ignoreCustomHelmet, color);
 		} else {
 			addItemToInventory(inv, itemStack,stockAmount);
 		}
 		if (update)
 			try { player.updateInventory(); } catch (Exception e){}
+	}
+
+
+	private static void addArmorToInventory(PlayerInventory inv,
+			ItemStack itemStack, int stockAmount, boolean ignoreCustomHelmet, Color color) {
+		Material itemType =itemStack.getType();
+		final boolean isHelmet = armor.get(itemType).type == ArmorType.HELM;
+		/// no item: add to armor slot
+		/// item better: add old to inventory, new to armor slot
+		/// item notbetter: add to inventory
+		Armor a = armor.get(itemType);
+		final ItemStack oldArmor = getArmorSlot(inv,a.type);
+		boolean empty = (oldArmor == null || oldArmor.getType() == Material.AIR);
+		boolean better = empty ? true : armorSlotBetter(armor.get(oldArmor.getType()),a);
+
+		if (color != null && a.level == ArmorLevel.LEATHER){
+			handler.setItemColor(itemStack,color);
+		}
+		if (empty || better){
+			switch (armor.get(itemType).type){
+			case HELM:
+				if (empty || (better && !ignoreCustomHelmet))
+					inv.setHelmet(itemStack);
+				break;
+			case CHEST: inv.setChestplate(itemStack); break;
+			case LEGGINGS: inv.setLeggings(itemStack); break;
+			case BOOTS: inv.setBoots(itemStack); break;
+			}
+		}
+		if (!empty){
+			if (better && !(isHelmet && ignoreCustomHelmet)){
+				addItemToInventory(inv, oldArmor,oldArmor.getAmount());
+			} else {
+				addItemToInventory(inv, itemStack,stockAmount);
+			}
+		}
 	}
 
 	private static boolean armorSlotBetter(Armor oldArmor, Armor newArmor) {
@@ -290,8 +347,8 @@ public class InventoryUtil {
 		return oldArmor.level.ordinal() < newArmor.level.ordinal();
 	}
 
-	private static ItemStack getArmorSlot(PlayerInventory inv, Armor armor) {
-		switch (armor.type){
+	private static ItemStack getArmorSlot(PlayerInventory inv, ArmorType armorType) {
+		switch (armorType){
 		case HELM: return inv.getHelmet();
 		case CHEST: return inv.getChestplate();
 		case LEGGINGS: return inv.getLeggings();
@@ -580,5 +637,6 @@ public class InventoryUtil {
 		}
 		return leftover;
 	}
+
 
 }

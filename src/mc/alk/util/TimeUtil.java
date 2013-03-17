@@ -1,4 +1,4 @@
-package com.alk.util;
+package mc.alk.util;
 
 import java.text.SimpleDateFormat;
 

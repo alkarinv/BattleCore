@@ -1,13 +1,16 @@
-package com.alk.serializers;
+package mc.alk.serializers;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.sql.DataSource;
 
@@ -25,11 +28,11 @@ import org.apache.commons.pool.impl.GenericObjectPool;
  *
  */
 public abstract class SQLSerializer{
-	static public final String version = "1.3";
+	static public final String version = "1.3.2";
 
 	static protected final boolean DEBUG = false;
 	static final boolean DEBUG_UPDATE = false;
-//	public static class SQLException
+	//	public static class SQLException
 	/**
 	 * Valid SQL Types
 	 * @author alkarin
@@ -87,10 +90,23 @@ public abstract class SQLSerializer{
 		public Connection con;
 	}
 
-	public Connection getConnection() throws SQLException{
-		return getConnection(true);
+	protected void close(RSCon rscon) {
+		try {
+			rscon.rs.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 	}
-	public Connection getConnection(boolean autoCommit) throws SQLException{
+
+	public Connection getConnection(boolean displayErrors) throws SQLException{
+		return getConnection(displayErrors, true);
+	}
+
+	public Connection getConnection() throws SQLException{
+		return getConnection(true, true);
+	}
+
+	public Connection getConnection(boolean displayErrors, boolean autoCommit) throws SQLException{
 		if (ds == null){
 			throw new java.sql.SQLException("Connection is null.  Did you intiliaze your SQL connection?");}
 		try {
@@ -98,7 +114,8 @@ public abstract class SQLSerializer{
 			con.setAutoCommit(autoCommit);
 			return con;
 		} catch (SQLException e1) {
-			e1.printStackTrace();
+			if (displayErrors)
+				e1.printStackTrace();
 			return null;
 		}
 	}
@@ -108,13 +125,14 @@ public abstract class SQLSerializer{
 			return;
 		try {rscon.con.close();} catch (SQLException e) {}
 	}
+
 	public void closeConnection(Connection con) {
 		if (con ==null)
 			return;
 		try {con.close();} catch (SQLException e) {e.printStackTrace();}
 	}
 
-	protected boolean init(){
+	protected boolean init() {
 		Connection con = null;  /// Our database connection
 		try {
 			Class.forName(TYPE.getDriver());
@@ -138,13 +156,14 @@ public abstract class SQLSerializer{
 
 		try {
 			ds = setupDataSource(datasourceString,USERNAME,PASSWORD,10,20 );
-			//            LOG.debug("Connection attempt to database succeeded.");
+			if (DEBUG) System.out.println("Connection attempt to database succeeded.");
 		} catch(Exception e) {
 			e.printStackTrace();
+			return false;
 		}
 
-		String strStmt = create_database;
 		if (TYPE == SQLType.MYSQL){
+			String strStmt = create_database;
 			try {
 				con = DriverManager.getConnection(connectionString, USERNAME,PASSWORD);
 				Statement st = con.createStatement();
@@ -169,7 +188,7 @@ public abstract class SQLSerializer{
 		connectionPool.setMinIdle( minIdle );
 		connectionPool.setMaxActive( maxActive );
 		connectionPool.setTestOnBorrow(true); /// test before the connection is made,
-        ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(connectURI,username, password);
+		ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(connectURI,username, password);
 
 		final boolean defaultReadOnly = false;
 		final boolean defaultAutoCommit = true;
@@ -227,13 +246,63 @@ public abstract class SQLSerializer{
 					return false;
 				}
 			}
-
 		}
-
 		return true;
 	}
 
+	/**
+	 * Check to see whether the database has a particular column
+	 * @param table
+	 * @param column
+	 * @return Boolean: whether the column exists
+	 */
+	protected Boolean hasColumn(String table, String column){
+		String stmt = null;
+		Boolean b = null;
+		switch (TYPE){
+		case MYSQL:
+			stmt = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? " +
+				"AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+			b = getBoolean(true,stmt, DB,table,column);
+			return b == null ? false : b;
+		case SQLITE:
+			/// After hours, I have discovered that SQL can NOT bind tables...
+			/// so explicitly put in the table.
+			/// UPDATE: on windows machines you need to explicitly put in the column too...
+			stmt = "SELECT COUNT("+column+") FROM '"+table+"'";
+			try {
+				b = getBoolean(false,stmt);
+				/// if we got any non error response... we have the table
+				return b == null ? false : true;
+			} catch (Exception e){
+				return false;
+			}
+		}
+		return false;
+	}
+
+	protected Boolean hasTable(String tableName){
+		Boolean exists;
+		if (TYPE == SQLType.SQLITE){
+			exists = getBoolean("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='"+tableName+"';");
+		} else {
+			List<Object> objs = getObjects("SHOW TABLES LIKE '"+tableName+"';");
+			exists = objs!=null && objs.size() == 1;
+		}
+		return exists;
+	}
+
 	protected RSCon executeQuery(String strRawStmt, Object... varArgs){
+		return executeQuery(true,strRawStmt,varArgs);
+	}
+
+	/**
+	 * Execute the given query
+	 * @param strRawStmt
+	 * @param varArgs
+	 * @return
+	 */
+	protected RSCon executeQuery(boolean displayErrors, String strRawStmt, Object... varArgs){
 		Connection con = null;
 		try {
 			con = getConnection();
@@ -246,19 +315,87 @@ public abstract class SQLSerializer{
 		RSCon rscon = null;
 
 		try {
-			ps = getStatement(strRawStmt,con,varArgs);
-			if (DEBUG) System.out.println("Executing   =" + ps.toString());
+			ps = getStatement(displayErrors, strRawStmt,con,varArgs);
+			if (DEBUG) System.out.println("Executing =" + ps +"   raw="+strRawStmt);
 			ResultSet rs = ps.executeQuery();
 			rscon = new RSCon();
 			rscon.con = con;
 			rscon.rs = rs;
-		} catch (SQLException e) {
-			System.err.println("Couldnt execute query "  + ps);
-			e.printStackTrace();
+		} catch (Exception e) {
+			if (displayErrors){
+				System.err.println("Couldnt execute query "  + ps);
+				for (int i=0;i< varArgs.length;i++){
+					System.err.println("   arg["+ i+"] = " + varArgs[i]);}
+				e.printStackTrace();
+			}
 		}
 		return rscon;
 	}
 
+	protected void executeUpdate(final boolean async, final String strRawStmt, final Object... varArgs){
+		if (async){
+			new Thread(new Runnable(){
+				public void run() {
+					try{
+						executeUpdate(strRawStmt, varArgs);
+					} catch (Exception e){
+						e.printStackTrace();
+					}
+				}
+			}).start();
+		} else {
+			try{
+				executeUpdate(strRawStmt, varArgs);
+			} catch (Exception e){
+				e.printStackTrace();
+			}
+		}
+	}
+
+	protected int executeUpdate(String strRawStmt, Object... varArgs){
+		int result= -1;
+		Connection con = null;
+		try {
+			con = getConnection();
+		} catch (SQLException e) {
+			System.err.println("Couldnt execute update raw='"  + strRawStmt+"'");
+			e.printStackTrace();
+			return -1;
+		}
+
+		PreparedStatement ps = null;
+		try {
+			ps = getStatement(strRawStmt,con,varArgs);
+			if (DEBUG) System.out.println("Executing   =" + ps.toString() +"  raw="+strRawStmt);
+			result = ps.executeUpdate();
+		} catch (Exception e) {
+			System.err.println("Couldnt execute update "  + ps);
+			e.printStackTrace();
+		} finally {
+			closeConnection(con);
+		}
+		return result;
+	}
+
+	protected void executeBatch(final boolean async, final String updateStatement, final List<List<Object>> batch) {
+		if (async){
+			new Thread(new Runnable(){
+				public void run() {
+					try{
+						executeBatch(updateStatement, batch);
+					} catch (Exception e){
+						e.printStackTrace();
+					}
+				}
+			}).start();
+		} else {
+			try{
+				executeBatch(updateStatement, batch);
+			} catch (Exception e){
+				e.printStackTrace();
+			}
+		}
+	}
 
 	protected void executeBatch(String updateStatement, List<List<Object>> batch) {
 		Connection con = null;
@@ -269,7 +406,7 @@ public abstract class SQLSerializer{
 			return;
 		}
 		PreparedStatement ps = null;
-//		System.out.println("executingBatch = " + updateStatement + "  batch=" + batch);
+		//		System.out.println("executingBatch = " + updateStatement + "  batch=" + batch);
 		try{con.setAutoCommit(false);} catch(Exception e){e.printStackTrace();}
 		try{ps = con.prepareStatement(updateStatement);} catch(Exception e){e.printStackTrace();}
 		for (List<Object> update: batch){
@@ -278,7 +415,7 @@ public abstract class SQLSerializer{
 					if (DEBUG_UPDATE) System.out.println(i+" = " + update.get(i));
 					ps.setObject(i+1, update.get(i));
 				}
-				if (DEBUG) System.out.println("Executing   =" + ps);
+				if (DEBUG) System.out.println("Executing   =" + ps.toString() +"  raw="+updateStatement);
 				ps.addBatch();
 			} catch(Exception e){
 				System.err.println("statement = " + ps);
@@ -303,6 +440,10 @@ public abstract class SQLSerializer{
 	}
 
 	protected PreparedStatement getStatement(String strRawStmt, Connection con, Object... varArgs){
+		return getStatement(true, strRawStmt,con,varArgs);
+	}
+
+	protected PreparedStatement getStatement(boolean displayErrors, String strRawStmt, Connection con, Object... varArgs){
 		PreparedStatement ps = null;
 		try{
 			ps = con.prepareStatement(strRawStmt);
@@ -311,35 +452,16 @@ public abstract class SQLSerializer{
 				ps.setObject(i+1, varArgs[i]);
 			}
 		} catch (Exception e){
-			System.err.println("Couldnt prepare statment "  + ps);
-			e.printStackTrace();
+			if (displayErrors){
+				System.err.println("Couldnt prepare statment "  + ps +"   rawStmt='" + strRawStmt +"' args="+varArgs);
+				for (int i=0;i< varArgs.length;i++){
+					System.err.println("   arg["+ i+"] = " + varArgs[i]);}
+				e.printStackTrace();
+			}
 		}
 		return ps;
 	}
 
-	protected int executeUpdate(String strRawStmt, Object... varArgs){
-		int result= -1;
-		Connection con = null;
-		try {
-			con = getConnection();
-		} catch (SQLException e) {
-			e.printStackTrace();
-			return -1;
-		}
-
-		PreparedStatement ps = null;
-		try {
-			ps = getStatement(strRawStmt,con,varArgs);
-			if (DEBUG) System.out.println("Executing   =" + ps.toString());
-			result = ps.executeUpdate();
-		} catch (Exception e) {
-			System.err.println("Couldnt execute update "  + ps);
-			e.printStackTrace();
-		} finally {
-			closeConnection(con);
-		}
-		return result;
-	}
 
 	public Double getDouble(String query, Object... varArgs){
 		RSCon rscon = executeQuery(query,varArgs);
@@ -410,7 +532,11 @@ public abstract class SQLSerializer{
 	}
 
 	public Boolean getBoolean(String query, Object... varArgs){
-		RSCon rscon = executeQuery(query,varArgs);
+		return getBoolean(true, query,varArgs);
+	}
+
+	protected Boolean getBoolean(boolean displayErrors, String query, Object... varArgs){
+		RSCon rscon = executeQuery(displayErrors, query,varArgs);
 		if (rscon == null || rscon.con == null)
 			return null;
 		try {
@@ -422,7 +548,8 @@ public abstract class SQLSerializer{
 				return i > 0;
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			if (displayErrors)
+				e.printStackTrace();
 		}finally{
 			try{rscon.con.close();}catch(Exception e){}
 		}
@@ -469,4 +596,31 @@ public abstract class SQLSerializer{
 		return null;
 	}
 
+	protected ArrayList<Map<String,Object>> convertToResult(RSCon rscon){
+		ArrayList<Map<String,Object>> values = new ArrayList<Map<String,Object>>();
+		try {
+			ResultSet rs = rscon.rs;
+			if (rs == null)
+				return null;
+			ResultSetMetaData rmd = rs.getMetaData();
+			while (rs.next()){
+				Map<String,Object> row = new HashMap<String,Object>();
+				for (int i=1;i<rmd.getColumnCount()+1;i++){
+					row.put(rmd.getColumnName(i), rs.getObject(i));
+				}
+				values.add(row);
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return values;
+	}
+
+	protected String getString(Map<String,Object> map, String key){
+		return map.get(key).toString();
+	}
+
+	protected Integer getInt(Map<String,Object> map, String key){
+		return Integer.valueOf(map.get(key).toString());
+	}
 }

@@ -1,4 +1,4 @@
-package com.alk.battleCore;
+package mc.alk.battleCore;
 
 import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;
