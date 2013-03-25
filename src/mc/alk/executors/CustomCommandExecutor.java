@@ -199,10 +199,10 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 	}
 
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-		TreeMap<Integer,MethodWrapper> methodmap = methods.get(DEFAULT_CMD);
+		TreeMap<Integer,MethodWrapper> methodmap = null;
 
 		/// No method to handle, show some help
-		if (args.length == 0 && (methodmap == null || methodmap.isEmpty())
+		if ((args.length == 0 && !methods.containsKey(DEFAULT_CMD))
 				|| (args.length > 0 && (args[0].equals("?") || args[0].equals("help")))){
 			showHelp(sender, command,args);
 			return true;
@@ -211,7 +211,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 		final int length = args.length;
 		final String cmd = length > 0 ? args[0].toLowerCase() : null;
 		final String subcmd = length > 1 ? args[1].toLowerCase() : null;
-//		methodmap = null;
+
 		/// check for subcommands
 		if (subcmd!=null && subCmdMethods.containsKey(cmd) && subCmdMethods.get(cmd).containsKey(subcmd)){
 			methodmap = subCmdMethods.get(cmd).get(subcmd);
@@ -219,6 +219,9 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 		}
 		if (methodmap == null && cmd != null){ /// Find our method, and verify all the annotations
 			methodmap = methods.get(cmd);}
+
+		if (methodmap == null) /// our last attempt
+			methodmap = methods.get(DEFAULT_CMD);
 
 		if (methodmap == null || methodmap.isEmpty()){
 			return sendMessage(sender, "&cThat command does not exist!&6 /"+command.getLabel()+" help &c for help");}
@@ -235,7 +238,6 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 			Arguments newArgs = null;
 			try {
 				newArgs= verifyArgs(mwrapper,mccmd,sender,command, label, args, startIndex);
-
 				Object completed = mwrapper.method.invoke(mwrapper.obj,newArgs.args);
 				if (completed != null && completed instanceof Boolean){
 					success = (Boolean)completed;

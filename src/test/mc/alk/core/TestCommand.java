@@ -5,7 +5,7 @@ import org.bukkit.command.CommandSender;
 
 public class TestCommand extends Command{
 
-	protected TestCommand(String name) {
+	public TestCommand(String name) {
 		super(name);
 	}
 
