@@ -1,4 +1,4 @@
-package mc.alk.util;
+package mc.alk.v1r5.util;
 
 import java.util.ArrayList;
 import java.util.Collection;

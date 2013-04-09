@@ -1,12 +1,15 @@
-package mc.alk.serializers;
+package mc.alk.v1r5.serializers;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import mc.alk.v1r5.util.Log;
+
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.yaml.snakeyaml.error.YAMLException;
 
 public class BaseConfig {
 	protected FileConfiguration config;
@@ -54,6 +57,8 @@ public class BaseConfig {
 		config = new YamlConfiguration();
 		try {
 			config.load(file);
+		} catch(YAMLException e1) {
+			Log.warn(e1.getMessage());
 		} catch (Exception e) {
 			e.printStackTrace();
 			return false;

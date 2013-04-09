@@ -1,7 +1,7 @@
-package mc.alk.serializers;
+package mc.alk.v1r5.serializers;
 
-import mc.alk.serializers.SQLSerializer.SQLType;
-import mc.alk.util.Log;
+import mc.alk.v1r5.serializers.SQLSerializer.SQLType;
+import mc.alk.v1r5.util.Log;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.java.JavaPlugin;

@@ -1,11 +1,11 @@
-package mc.alk.battleCore;
+package mc.alk.v1r5.core;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import mc.alk.util.Log;
+import mc.alk.v1r5.util.Log;
 
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;

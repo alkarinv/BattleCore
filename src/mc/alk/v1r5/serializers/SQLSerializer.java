@@ -1,4 +1,4 @@
-package mc.alk.serializers;
+package mc.alk.v1r5.serializers;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

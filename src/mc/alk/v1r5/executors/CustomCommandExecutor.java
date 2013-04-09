@@ -1,4 +1,4 @@
-package mc.alk.executors;
+package mc.alk.v1r5.executors;
 
 import java.io.File;
 import java.lang.annotation.Retention;
@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.PriorityQueue;
 import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -27,7 +27,7 @@ import org.bukkit.entity.Player;
 
 public abstract class CustomCommandExecutor implements CommandExecutor
 {
-	public static final String version = "2.0";
+	public static final String version = "2.0.1";
 	static final boolean DEBUG = false;
 
 	private HashMap<String,TreeMap<Integer,MethodWrapper>> methods =
@@ -35,8 +35,11 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 	private HashMap<String,Map<String,TreeMap<Integer,MethodWrapper>>> subCmdMethods =
 			new HashMap<String,Map<String,TreeMap<Integer,MethodWrapper>>>();
 
-	protected TreeMap<MCCommand, Set<String>> usage = new TreeMap<MCCommand, Set<String>>(new Comparator<MCCommand>(){
-		public int compare(MCCommand cmd1, MCCommand cmd2) {
+	protected PriorityQueue<MethodWrapper> usage = new PriorityQueue<MethodWrapper>(2, new Comparator<MethodWrapper>(){
+		public int compare(MethodWrapper mw1, MethodWrapper mw2) {
+			MCCommand cmd1 = mw1.getCommand();
+			MCCommand cmd2 = mw2.getCommand();
+
 			int c = new Float(cmd1.helpOrder()).compareTo(cmd2.helpOrder());
 			if (c!=0) return c;
 			c = new Integer(cmd1.order()).compareTo(cmd2.order());
@@ -56,8 +59,14 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 		public MethodWrapper(Object obj, Method method){
 			this.obj = obj; this.method = method;
 		}
+
 		public Object obj; /// Object instance the method belongs to
 		public Method method; /// Method
+		public String usage;
+
+		public MCCommand getCommand(){
+			return this.method.getAnnotation(MCCommand.class);
+		}
 	}
 
 	/**
@@ -108,10 +117,11 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 			if (mthds == null){
 				mthds = new TreeMap<Integer,MethodWrapper>();
 			}
-			int order = (mc.order() != -1? mc.order()*100000 :Integer.MAX_VALUE) - ml*100-mthds.size();
-			mthds.put(order, new MethodWrapper(obj,method));
+			int order = (mc.order() != -1? mc.order()*100000 :Integer.MAX_VALUE) - ml*100 - mthds.size();
+			MethodWrapper mw = new MethodWrapper(obj,method);
+			mthds.put(order, mw);
 			methods.put(cmd, mthds);
-			addUsage(method, mc);
+			addUsage(mw, mc);
 		} else {
 			Map<String,TreeMap<Integer,MethodWrapper>> basemthds = subCmdMethods.get(cmd);
 			if (basemthds == null){
@@ -125,23 +135,20 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 					basemthds.put(subcmd, mthds);
 				}
 				int order = (mc.order() != -1? mc.order()*100000 :Integer.MAX_VALUE) - ml*100-mthds.size();
-				mthds.put(order, new MethodWrapper(obj,method));
-				addUsage(method, mc);
+				MethodWrapper mw = new MethodWrapper(obj,method);
+				mthds.put(order, mw);
+				addUsage(mw, mc);
 			}
 		}
 	}
-	private void addUsage(Method method, MCCommand mc) {
-		Set<String> usages = usage.get(mc);
-		if (usages == null){
-			usages = new HashSet<String>();
-			usage.put(mc, usages);
-		}
+	private void addUsage(MethodWrapper method, MCCommand mc) {
 		/// save the usages, for showing help messages
 		if (!mc.usage().isEmpty()){
-			usages.add(mc.usage());
+			method.usage = mc.usage();
 		} else { /// Generate an automatic usage string
-			usages.add(createUsage(method));
+			method.usage = createUsage(method.method);
 		}
+		usage.add(method);
 	}
 
 	private String createUsage(Method method) {
@@ -158,13 +165,6 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 			sb.append(getUsageString(theclass));
 		}
 		return sb.toString();
-	}
-
-	private List<String> getUsage(Command c, MCCommand cmd) {
-		List<String> usages = new ArrayList<String>();
-		for (String str : usage.get(cmd)){
-			usages.add( "&6/"+c.getName()+" " + str);}
-		return usages;
 	}
 
 	protected String getUsageString(Class<?> clazz) {
@@ -192,9 +192,9 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 
 	public class CommandException{
 		final IllegalArgumentException err;
-		final MCCommand cmd;
-		public CommandException(IllegalArgumentException err, MCCommand cmd){
-			this.err = err; this.cmd = cmd;
+		final MethodWrapper mw;
+		public CommandException(IllegalArgumentException err, MethodWrapper mw){
+			this.err = err; this.mw = mw;
 		}
 	}
 
@@ -207,10 +207,10 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 			showHelp(sender, command,args);
 			return true;
 		}
-		int startIndex = 1;
 		final int length = args.length;
 		final String cmd = length > 0 ? args[0].toLowerCase() : null;
 		final String subcmd = length > 1 ? args[1].toLowerCase() : null;
+		int startIndex = 0;
 
 		/// check for subcommands
 		if (subcmd!=null && subCmdMethods.containsKey(cmd) && subCmdMethods.get(cmd).containsKey(subcmd)){
@@ -218,10 +218,14 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 			startIndex = 2;
 		}
 		if (methodmap == null && cmd != null){ /// Find our method, and verify all the annotations
-			methodmap = methods.get(cmd);}
+			methodmap = methods.get(cmd);
+			if (methodmap != null)
+				startIndex =1;
+		}
 
-		if (methodmap == null) /// our last attempt
+		if (methodmap == null){ /// our last attempt
 			methodmap = methods.get(DEFAULT_CMD);
+		}
 
 		if (methodmap == null || methodmap.isEmpty()){
 			return sendMessage(sender, "&cThat command does not exist!&6 /"+command.getLabel()+" help &c for help");}
@@ -230,6 +234,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 		List<CommandException> errs =null;
 		boolean success = false;
 		for (MethodWrapper mwrapper : methodmap.values()){
+
 			mccmd = mwrapper.method.getAnnotation(MCCommand.class);
 			final boolean isOp = sender == null || sender.isOp() || sender instanceof ConsoleCommandSender;
 
@@ -242,11 +247,9 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 				if (completed != null && completed instanceof Boolean){
 					success = (Boolean)completed;
 					if (!success){
-						List<String> usage = getUsage(command,mccmd);
+						String usage = mwrapper.usage;
 						if (usage != null && !usage.isEmpty()){
-							for (String use : usage){
-								sendMessage(sender, use);}
-						}
+							sendMessage(sender, usage);}
 					}
 				} else {
 					success = true;
@@ -255,27 +258,17 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 			} catch (IllegalArgumentException e){ /// One of the arguments wasn't correct, store the message
 				if (errs == null)
 					errs = new ArrayList<CommandException>();
-				errs.add(new CommandException(e,mccmd));
+				errs.add(new CommandException(e,mwrapper));
 			} catch (Exception e) { /// Just all around bad
 				logInvocationError(e, mwrapper,newArgs);
 			}
 		}
 		/// and handle all errors
 		if (!success && errs != null && !errs.isEmpty()){
-			if (errs.size() == 1){
-				sendMessage(sender, errs.get(0).err.getMessage());
-				for (String usage: getUsage(command,mccmd)){
-					sendMessage(sender, usage);}
-				return true;
-			}
-			HashSet<String> errstrings = new HashSet<String>();
 			HashSet<String> usages = new HashSet<String>();
 			for (CommandException e: errs){
-				errstrings.add(e.err.getMessage());
-				usages.addAll(getUsage(command,e.cmd));
+				usages.add(ChatColor.GOLD+command.getLabel() +" " +e.mw.usage+" &c:"+e.err.getMessage());
 			}
-			for (String msg : errstrings){
-				sendMessage(sender, msg);}
 			for (String msg : usages){
 				sendMessage(sender, msg);}
 		}
@@ -307,29 +300,29 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 		final int paramLength = mwrapper.method.getParameterTypes().length;
 
 		/// Check our permissions
-		if (!cmd.perm().isEmpty() && !sender.hasPermission(cmd.perm()))
-			throw new IllegalArgumentException("&cYou don't have permission to use this command");
+		if (!cmd.perm().isEmpty() && !sender.hasPermission(cmd.perm()) && !(cmd.admin() && hasAdminPerms(sender)))
+			throw new IllegalArgumentException("You don't have permission to use this command");
 
 		/// Verify min number of arguments
 		if (args.length < cmd.min()){
-			throw new IllegalArgumentException(ChatColor.RED+"You need at least "+cmd.min()+" arguments");
+			throw new IllegalArgumentException("You need at least "+cmd.min()+" arguments");
 		}
 		/// Verfiy max number of arguments
 		if (args.length > cmd.max()){
-			throw new IllegalArgumentException(ChatColor.RED+"You need less than "+cmd.max()+" arguments");
+			throw new IllegalArgumentException("You need less than "+cmd.max()+" arguments");
 		}
 		/// Verfiy max number of arguments
 		if (cmd.exact()!= -1 && args.length != cmd.exact()){
-			throw new IllegalArgumentException(ChatColor.RED+"You need exactly "+cmd.exact()+" arguments");
+			throw new IllegalArgumentException("You need exactly "+cmd.exact()+" arguments");
 		}
 		final boolean isPlayer = sender instanceof Player;
 		final boolean isOp = (isPlayer && sender.isOp()) || sender == null || sender instanceof ConsoleCommandSender;
 
 		if (cmd.op() && !isOp)
-			throw new IllegalArgumentException(ChatColor.RED +"You need to be op to use this command");
+			throw new IllegalArgumentException("You need to be op to use this command");
 
 		if (cmd.admin() && !isOp && (isPlayer && !hasAdminPerms(sender)))
-			throw new IllegalArgumentException(ChatColor.RED +"You need to be an Admin to use this command");
+			throw new IllegalArgumentException("You need to be an Admin to use this command");
 
 		Class<?> types[] = mwrapper.method.getParameterTypes();
 
@@ -378,7 +371,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 				if (index >= args.length)
 					throw new IllegalArgumentException("String Index out of range. ");
 				if (!args[index].matches("[a-zA-Z0-9_]*")) {
-					throw new IllegalArgumentException("&eargument '"+args[index]+"' can only be alphanumeric with underscores");
+					throw new IllegalArgumentException("argument '"+args[index]+"' can only be alphanumeric with underscores");
 				}
 			}
 		}
@@ -478,18 +471,17 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 		List<String> unavailable = new ArrayList<String>();
 		List<String> onlyop = new ArrayList<String>();
 
-		for (MCCommand cmd : usage.keySet()){
-			for (String str: usage.get(cmd)){
-				final String use = "&6/" + command.getName() +" " + str;
-				if (cmd.op() && !sender.isOp())
-					onlyop.add(use);
-				else if (cmd.admin() && !hasAdminPerms(sender))
-					onlyop.add(use);
-				else if (!cmd.perm().isEmpty() && !sender.hasPermission(cmd.perm()))
-					unavailable.add(use);
-				else
-					available.add(use);
-			}
+		for (MethodWrapper mw : usage){
+			MCCommand cmd = mw.getCommand();
+			final String use = "&6/" + command.getName() +" " + mw.usage;
+			if (cmd.op() && !sender.isOp())
+				continue;
+			else if (cmd.admin() && !hasAdminPerms(sender))
+				continue;
+			else if (!cmd.perm().isEmpty() && !sender.hasPermission(cmd.perm()))
+				unavailable.add(use);
+			else
+				available.add(use);
 		}
 		int npages = available.size()+unavailable.size();
 		if (sender.isOp())
@@ -499,7 +491,7 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 			sendMessage(sender, "&4That page doesnt exist, try 1-"+npages);
 			return;
 		}
-		if (command != null) {
+		if (command != null && command.getAliases() != null && !command.getAliases().isEmpty()) {
 			String aliases = StringUtils.join(command.getAliases(),", ");
 			sendMessage(sender, "&eShowing page &6"+page +"/"+npages +"&6 : /"+command.getName()+" help <page number>");
 			sendMessage(sender, "&e    command &6"+command.getName()+"&e has aliases: &6" + aliases);
@@ -608,23 +600,23 @@ public abstract class CustomCommandExecutor implements CommandExecutor
 	{
 		/// the cmd and all its aliases, can be blank if you want to do something when they just type
 		/// the command only
-	    String[] cmds() default {};
+		String[] cmds() default {};
 
 		/// subCommands
-	    String[] subCmds() default {};
+		String[] subCmds() default {};
 
-	    /// Verify the number of parameters, inGuild and notInGuild imply min if they have an index > number of args
-	    int min() default 0;
-	    int max() default Integer.MAX_VALUE;
+		/// Verify the number of parameters, inGuild and notInGuild imply min if they have an index > number of args
+		int min() default 0;
+		int max() default Integer.MAX_VALUE;
 		int exact() default -1;
 
-	    int order() default -1;
-	    float helpOrder() default Integer.MAX_VALUE;
+		int order() default -1;
+		float helpOrder() default Integer.MAX_VALUE;
 		boolean admin() default false; /// admin
-	    boolean op() default false; /// op
+		boolean op() default false; /// op
 
-	    String usage() default "";
-	    String usageNode() default "";
+		String usage() default "";
+		String usageNode() default "";
 		String perm() default ""; /// permission node
 		int[] alphanum() default {}; /// only alpha numeric
 
