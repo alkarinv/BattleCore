@@ -1,4 +1,4 @@
-package mc.alk.v1r5.core;
+package mc.alk.v1r6.core;
 
 import org.apache.commons.lang.StringUtils;
 

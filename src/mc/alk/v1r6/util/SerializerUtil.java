@@ -1,9 +1,10 @@
-package mc.alk.v1r5.util;
+package mc.alk.v1r6.util;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.StringTokenizer;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -11,7 +12,7 @@ import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 
 public class SerializerUtil {
-	public static boolean TESTING = false;
+	public static final boolean TESTING = false;
 
 	public static HashMap<String, String> createSaveableLocations(Map<Integer, Location> mlocs) {
 		HashMap<String,String> locations = new HashMap<String,String>();
@@ -40,14 +41,15 @@ public class SerializerUtil {
 		//		String loc = node.getString(nodestr,null);
 		if (locstr == null)
 			throw new IllegalArgumentException("Error parsing location. Location string was null");
-		String split[] = locstr.split(",");
-		String w = split[0];
-		float x = Float.valueOf(split[1]);
-		float y = Float.valueOf(split[2]);
-		float z = Float.valueOf(split[3]);
+		StringTokenizer scan = new StringTokenizer(locstr,",");
+		String w = scan.nextToken();
+		float x = Float.valueOf(scan.nextToken());
+		float y = Float.valueOf(scan.nextToken());
+		float z = Float.valueOf(scan.nextToken());
 		float yaw = 0, pitch = 0;
-		if (split.length > 4){yaw = Float.valueOf(split[4]);}
-		if (split.length > 5){pitch = Float.valueOf(split[5]);}
+		if (scan.hasMoreTokens()){yaw = Float.valueOf(scan.nextToken());}
+		if (scan.hasMoreTokens()){pitch = Float.valueOf(scan.nextToken());}
+
 		World world = null;
 		if (TESTING) return new Location(world,x,y,z,yaw,pitch);
 		if (w != null){
@@ -61,7 +63,7 @@ public class SerializerUtil {
 		if (l == null) return null;
 		if (TESTING && l.getWorld()==null)
 			return "null," + l.getX() + "," + l.getY() + "," + l.getZ()+","+l.getYaw()+","+l.getPitch();
-		return l.getWorld().getName() +"," + l.getX() + "," + l.getY() + "," + l.getZ()+","+l.getYaw()+","+l.getPitch();
+		return l.getWorld().getName()+","+l.getX()+","+l.getY()+","+l.getZ()+","+l.getYaw()+","+l.getPitch();
 	}
 
 	public static String getBlockLocString(Location l){

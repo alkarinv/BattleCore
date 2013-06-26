@@ -1,4 +1,4 @@
-package mc.alk.v1r5.serializers;
+package mc.alk.v1r6.serializers;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -143,19 +143,25 @@ public abstract class SQLSerializer{
 			return false;
 		}
 		String connectionString = null,datasourceString = null;
+		final int minIdle;
+		final int maxActive;
 		switch(TYPE){
 		case SQLITE:
 			datasourceString = connectionString = "jdbc:sqlite:"+URL+"/"+DB+".sqlite";
+			maxActive = 1;
+			minIdle = -1;
 			break;
 		case MYSQL:
 		default:
+			minIdle = 10;
+			maxActive = 20;
 			datasourceString = "jdbc:mysql://"+URL+":"+PORT+"/"+DB+"?autoReconnect=true";
 			connectionString = "jdbc:mysql://"+URL+":" + PORT+"?autoReconnect=true";
 			break;
 		}
 
 		try {
-			ds = setupDataSource(datasourceString,USERNAME,PASSWORD,10,20 );
+			ds = setupDataSource(datasourceString,USERNAME,PASSWORD, minIdle, maxActive );
 			if (DEBUG) System.out.println("Connection attempt to database succeeded.");
 		} catch(Exception e) {
 			e.printStackTrace();
@@ -185,7 +191,8 @@ public abstract class SQLSerializer{
 			int minIdle, int maxActive) throws Exception {
 		GenericObjectPool connectionPool = new GenericObjectPool(null);
 
-		connectionPool.setMinIdle( minIdle );
+		if (minIdle != -1)
+			connectionPool.setMinIdle( minIdle );
 		connectionPool.setMaxActive( maxActive );
 		connectionPool.setTestOnBorrow(true); /// test before the connection is made,
 		ConnectionFactory connectionFactory = new DriverManagerConnectionFactory(connectURI,username, password);

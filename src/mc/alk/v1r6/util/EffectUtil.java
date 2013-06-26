@@ -1,4 +1,4 @@
-package mc.alk.v1r5.util;
+package mc.alk.v1r6.util;
 
 import java.util.HashMap;
 import java.util.List;
@@ -66,14 +66,17 @@ public class EffectUtil {
 		StringBuilder sb = new StringBuilder();
 		boolean first = true;
 		for (PotionEffect pe : effects){
-			int str = pe.getAmplifier();
-			int tim = pe.getDuration();
 			if (!first) sb.append(", ");
-			String commonName = getCommonName(pe) +":" + (str+1)+":"+tim/20;
-			sb.append(commonName);
 			first = false;
+			sb.append(getEnchantString(pe));
 		}
 		return sb.toString();
+	}
+
+	public static String getEnchantString(PotionEffect effect){
+		int str = effect.getAmplifier();
+		int tim = effect.getDuration();
+		return getCommonName(effect) +":" + (str+1)+":"+tim/20;
 	}
 
 	public static PotionEffect parseArg(String arg, int defaultStrength, int defaultTime) {

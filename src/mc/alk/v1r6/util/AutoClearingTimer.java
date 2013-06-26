@@ -1,8 +1,8 @@
-package mc.alk.v1r5.util;
+package mc.alk.v1r6.util;
 
 import java.util.List;
 
-import mc.alk.v1r5.util.AutoClearingTimer.LongObject;
+import mc.alk.v1r6.util.AutoClearingTimer.LongObject;
 
 import org.apache.commons.lang.mutable.MutableBoolean;
 
@@ -23,7 +23,7 @@ public class AutoClearingTimer<Key> extends Cache<Key, LongObject<Key>>{
 		});
 	}
 
-	public static class LongObject<K> extends mc.alk.v1r5.util.Cache.CacheObject<K,Long>{
+	public static class LongObject<K> extends mc.alk.v1r6.util.Cache.CacheObject<K,Long>{
 		K key;
 		Long val;
 		public LongObject(K key){
