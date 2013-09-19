@@ -1,10 +1,10 @@
-package mc.alk.v1r6.serializers;
+package mc.alk.v1r7.serializers;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import mc.alk.v1r6.util.Log;
+import mc.alk.v1r7.util.Log;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;

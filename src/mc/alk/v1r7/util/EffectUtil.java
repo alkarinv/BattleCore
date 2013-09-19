@@ -1,4 +1,4 @@
-package mc.alk.v1r6.util;
+package mc.alk.v1r7.util;
 
 import java.util.HashMap;
 import java.util.List;

@@ -1,11 +1,11 @@
-package mc.alk.v1r6.core;
+package mc.alk.v1r7.core;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import mc.alk.v1r6.util.Log;
+import mc.alk.v1r7.util.Log;
 
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;

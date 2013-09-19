@@ -1,4 +1,4 @@
-package mc.alk.v1r6.serializers;
+package mc.alk.v1r7.serializers;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -32,6 +32,8 @@ public abstract class SQLSerializer{
 
 	static protected final boolean DEBUG = false;
 	static final boolean DEBUG_UPDATE = false;
+
+	protected static final int TIMEOUT = 4; /// default seconds for a query to timeout
 	//	public static class SQLException
 	/**
 	 * Valid SQL Types
@@ -210,7 +212,7 @@ public abstract class SQLSerializer{
 		return dataSource;
 	}
 
-	protected boolean createTable(Connection con, String tableName, String sql_create_table,String... sql_updates) {
+	protected boolean createTable(String tableName, String sql_create_table,String... sql_updates) {
 		/// Check to see if our table exists;
 		Boolean exists;
 		if (TYPE == SQLType.SQLITE){
@@ -228,6 +230,14 @@ public abstract class SQLSerializer{
 		String strStmt = sql_create_table;
 		Statement st = null;
 		int result =0;
+		Connection con = null;
+		try{
+			con = getConnection();
+		} catch (SQLException e) {
+			System.err.println("Failed in creating Table, null connection. " +strStmt + " result=" + result);
+			e.printStackTrace();
+			return false;
+		}
 		try {
 			st = con.createStatement();
 			result = st.executeUpdate(strStmt);
@@ -235,6 +245,7 @@ public abstract class SQLSerializer{
 		} catch (SQLException e) {
 			System.err.println("Failed in creating Table " +strStmt + " result=" + result);
 			e.printStackTrace();
+			closeConnection(con);
 			return false;
 		}
 		/// Updates and indexes
@@ -250,10 +261,12 @@ public abstract class SQLSerializer{
 				} catch (SQLException e) {
 					System.err.println("Failed in updating Table " +strStmt + " result=" + result);
 					e.printStackTrace();
+					closeConnection(con);
 					return false;
 				}
 			}
 		}
+		closeConnection(con);
 		return true;
 	}
 
@@ -270,7 +283,7 @@ public abstract class SQLSerializer{
 		case MYSQL:
 			stmt = "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? " +
 				"AND TABLE_NAME = ? AND COLUMN_NAME = ?";
-			b = getBoolean(true,stmt, DB,table,column);
+			b = getBoolean(true, 2, stmt, DB,table,column);
 			return b == null ? false : b;
 		case SQLITE:
 			/// After hours, I have discovered that SQL can NOT bind tables...
@@ -278,7 +291,7 @@ public abstract class SQLSerializer{
 			/// UPDATE: on windows machines you need to explicitly put in the column too...
 			stmt = "SELECT COUNT("+column+") FROM '"+table+"'";
 			try {
-				b = getBoolean(false,stmt);
+				b = getBoolean(false,2, stmt);
 				/// if we got any non error response... we have the table
 				return b == null ? false : true;
 			} catch (Exception e){
@@ -291,7 +304,7 @@ public abstract class SQLSerializer{
 	protected Boolean hasTable(String tableName){
 		Boolean exists;
 		if (TYPE == SQLType.SQLITE){
-			exists = getBoolean("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='"+tableName+"';");
+			exists = getBoolean("SELECT count(name) FROM sqlite_master WHERE type='table' AND name='"+tableName+"'");
 		} else {
 			List<Object> objs = getObjects("SHOW TABLES LIKE '"+tableName+"';");
 			exists = objs!=null && objs.size() == 1;
@@ -300,7 +313,7 @@ public abstract class SQLSerializer{
 	}
 
 	protected RSCon executeQuery(String strRawStmt, Object... varArgs){
-		return executeQuery(true,strRawStmt,varArgs);
+		return executeQuery(true,TIMEOUT,strRawStmt,varArgs);
 	}
 
 	/**
@@ -309,7 +322,8 @@ public abstract class SQLSerializer{
 	 * @param varArgs
 	 * @return
 	 */
-	protected RSCon executeQuery(boolean displayErrors, String strRawStmt, Object... varArgs){
+	protected RSCon executeQuery(boolean displayErrors, Integer timeoutSeconds,
+			String strRawStmt, Object... varArgs){
 		Connection con = null;
 		try {
 			con = getConnection();
@@ -317,13 +331,24 @@ public abstract class SQLSerializer{
 			e.printStackTrace();
 			return null;
 		}
+		return executeQuery(con,displayErrors,timeoutSeconds, strRawStmt,varArgs);
+	}
 
+	/**
+	 * Execute the given query
+	 * @param strRawStmt
+	 * @param varArgs
+	 * @return
+	 */
+	protected RSCon executeQuery(Connection con, boolean displayErrors, Integer timeoutSeconds,
+			String strRawStmt, Object... varArgs){
 		PreparedStatement ps = null;
 		RSCon rscon = null;
 
 		try {
 			ps = getStatement(displayErrors, strRawStmt,con,varArgs);
-			if (DEBUG) System.out.println("Executing =" + ps +"   raw="+strRawStmt);
+			if (DEBUG) System.out.println("Executing =" + ps +" timeout="+timeoutSeconds+" raw="+strRawStmt);
+			ps.setQueryTimeout(timeoutSeconds);
 			ResultSet rs = ps.executeQuery();
 			rscon = new RSCon();
 			rscon.con = con;
@@ -539,11 +564,12 @@ public abstract class SQLSerializer{
 	}
 
 	public Boolean getBoolean(String query, Object... varArgs){
-		return getBoolean(true, query,varArgs);
+		return getBoolean(true, TIMEOUT, query,varArgs);
 	}
 
-	protected Boolean getBoolean(boolean displayErrors, String query, Object... varArgs){
-		RSCon rscon = executeQuery(displayErrors, query,varArgs);
+	protected Boolean getBoolean(boolean displayErrors, Integer timeoutSeconds,
+			String query, Object... varArgs){
+		RSCon rscon = executeQuery(displayErrors,timeoutSeconds, query,varArgs);
 		if (rscon == null || rscon.con == null)
 			return null;
 		try {

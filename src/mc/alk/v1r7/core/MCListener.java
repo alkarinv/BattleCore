@@ -1,4 +1,4 @@
-package mc.alk.v1r6.core;
+package mc.alk.v1r7.core;
 
 import org.bukkit.Bukkit;
 import org.bukkit.event.Listener;

@@ -1,7 +1,7 @@
 package test.mc.alk.core;
 
 import junit.framework.TestCase;
-import mc.alk.v1r6.executors.CustomCommandExecutor;
+import mc.alk.v1r7.executors.CustomCommandExecutor;
 
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
