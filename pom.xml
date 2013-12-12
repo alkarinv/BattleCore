@@ -63,6 +63,7 @@
   </dependencies>
   <!-- How we will compile the plugin -->
   <build>
+    <finalName>${project.name}</finalName>
     <extensions>
       <extension>
         <groupId>org.apache.maven.wagon</groupId>
