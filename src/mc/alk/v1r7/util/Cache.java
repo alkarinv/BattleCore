@@ -1,5 +1,7 @@
 package mc.alk.v1r7.util;
 
+import org.apache.commons.lang.mutable.MutableBoolean;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -7,8 +9,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.commons.lang.mutable.MutableBoolean;
 
 
 /**
@@ -101,8 +101,8 @@ public class Cache <Key, Value> {
 	}
 
 	CacheSerializer<Key,UniqueKey<Key>> serializer; /// Our serializer for the cache data
-	Map<Key,CacheElement> map = new HashMap<Key,CacheElement>(); /// a mapping of the key to the cache objects
-	Set<Key> dirty = new HashSet<Key>(); /// which keys have been modified
+	final Map<Key,CacheElement> map = new HashMap<Key,CacheElement>(); /// a mapping of the key to the cache objects
+	final Set<Key> dirty = new HashSet<Key>(); /// which keys have been modified
 	Boolean autoFlush = false;
 	Long autoFlushTime = null;
 	Long lastCheckedTime = System.currentTimeMillis();
@@ -135,7 +135,7 @@ public class Cache <Key, Value> {
 	 */
 	public Value get(Key key, Object... varArgs) {
 		if (DEBUG) System.out.println(" - getting key = " + key + " contains=" + map.containsKey(key));
-		CacheElement o=null;
+		CacheElement o;
 		if (map.containsKey(key)){
 			o = map.get(key);
 		} else{
@@ -177,7 +177,7 @@ public class Cache <Key, Value> {
 
 	/**
 	 * get a cache object using the key from the given param
-	 * @param type
+	 * @param obj UniqueKey
 	 * @return
 	 */
 	public Value get(UniqueKey<Key> obj){
@@ -232,7 +232,7 @@ public class Cache <Key, Value> {
 
 	/**
 	 * Specify that a cache object is 'dirty' and needs to be saved to db
-	 * @param key
+	 * @param keys Keys to say are dirty
 	 */
 	public void setDirty(Key... keys) {
 		synchronized(dirty){
@@ -267,10 +267,10 @@ public class Cache <Key, Value> {
 	}
 
 
-	/**
-	 * Explicitly save
-	 * @param element
-	 */
+    /**
+     * Explicitly save
+     * @param element to save
+     */
 	public void save(UniqueKey<Key> element) {
 		List<UniqueKey<Key>> types = new ArrayList<UniqueKey<Key>>(1);
 		types.add(element);
@@ -281,7 +281,7 @@ public class Cache <Key, Value> {
 	}
 	/**
 	 * Explicitly save
-	 * @param element
+	 * @param key Key
 	 */
 	public void save(Key key) {
 		List<UniqueKey<Key>> types = new ArrayList<UniqueKey<Key>>(1);
